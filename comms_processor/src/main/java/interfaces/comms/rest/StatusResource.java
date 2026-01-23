@@ -185,11 +185,14 @@ public class StatusResource {
             
             return Response.ok(html.toString()).build();
         } catch (Exception e) {
+            // Log the actual error for debugging
+            java.util.logging.Logger.getLogger(StatusResource.class.getName()).severe("Error retrieving server status: " + e.getMessage());
+            
             StringBuilder errorHtml = new StringBuilder();
             errorHtml.append("<!DOCTYPE html>\n");
             errorHtml.append("<html><head><title>Error</title></head><body>\n");
             errorHtml.append("<h1>Error</h1>\n");
-            errorHtml.append("<p>Failed to retrieve server status: ").append(escapeHtml(e.getMessage())).append("</p>\n");
+            errorHtml.append("<p>Failed to retrieve server status. Please check server logs for details.</p>\n");
             errorHtml.append("</body></html>");
             
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -288,11 +291,14 @@ public class StatusResource {
             
             return Response.ok(html.toString()).build();
         } catch (Exception e) {
+            // Log the actual error for debugging
+            java.util.logging.Logger.getLogger(StatusResource.class.getName()).severe("Error retrieving datasources: " + e.getMessage());
+            
             StringBuilder errorHtml = new StringBuilder();
             errorHtml.append("<!DOCTYPE html>\n");
             errorHtml.append("<html><head><title>Error</title></head><body>\n");
             errorHtml.append("<h1>Error</h1>\n");
-            errorHtml.append("<p>Failed to retrieve datasources: ").append(escapeHtml(e.getMessage())).append("</p>\n");
+            errorHtml.append("<p>Failed to retrieve datasources. Please check server logs for details.</p>\n");
             errorHtml.append("</body></html>");
             
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
