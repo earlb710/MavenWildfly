@@ -2,6 +2,7 @@ package interfaces.comms.rest;
 
 import interfaces.comms.service.WildFlyManagementService;
 
+import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -18,6 +19,7 @@ import java.util.Map;
  */
 @Path("/status")
 @Produces(MediaType.APPLICATION_JSON)
+@RequestScoped
 public class StatusResource {
 
     @Inject
