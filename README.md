@@ -11,12 +11,19 @@ comms_processor/
 ├── pom.xml                                 # Maven configuration
 ├── src/
 │   ├── main/
-│   │   ├── java/                          # Java source files
+│   │   ├── java/
+│   │   │   └── com/example/comms/
+│   │   │       ├── rest/
+│   │   │       │   ├── RestApplication.java    # JAX-RS Application configuration
+│   │   │       │   └── StatusResource.java     # REST endpoints for status
+│   │   │       └── service/
+│   │   │           └── WildFlyManagementService.java # WildFly management service
 │   │   ├── resources/
 │   │   │   └── database.properties        # Database configuration
 │   │   └── webapp/
 │   │       ├── WEB-INF/
-│   │       │   └── web.xml               # Web application descriptor
+│   │       │   ├── web.xml               # Web application descriptor
+│   │       │   └── beans.xml             # CDI configuration
 │   │       └── index.html                # Welcome page
 │   └── test/
 │       ├── java/                          # Test source files
@@ -110,6 +117,70 @@ data-source add --name=PostgresDS --jndi-name=java:jboss/datasources/PostgresDS 
 /subsystem=datasources/jdbc-driver=oracle:add(driver-name=oracle,driver-module-name=com.oracle,driver-class-name=oracle.jdbc.OracleDriver)
 
 data-source add --name=OracleDS --jndi-name=java:jboss/datasources/OracleDS --driver-name=oracle --connection-url=jdbc:oracle:thin:@localhost:1521:ORCL --user-name=comms_user --password=changeme
+```
+
+## REST API Endpoints
+
+The application provides REST API endpoints for monitoring and status checking:
+
+### Status Endpoints
+
+Base URL: `http://localhost:8080/comms_processor/api/status`
+
+#### 1. Ping Endpoint
+
+**Endpoint:** `GET /api/status/ping`
+
+**Description:** Simple health check endpoint to verify the service is running.
+
+**Response Example:**
+```json
+{
+  "status": "ok",
+  "message": "Service is running",
+  "timestamp": 1706012345678
+}
+```
+
+**Usage:**
+```bash
+curl http://localhost:8080/comms_processor/api/status/ping
+```
+
+#### 2. Server Status Endpoint
+
+**Endpoint:** `GET /api/status/serverStatus`
+
+**Description:** Returns detailed information about all services running on the WildFly application server, including deployments, subsystems, and managed resources.
+
+**Response Example:**
+```json
+{
+  "status": "ok",
+  "timestamp": 1706012345678,
+  "servicesCount": 25,
+  "services": [
+    {
+      "name": "java.lang:type=Runtime",
+      "type": "Runtime",
+      "domain": "java.lang",
+      "state": "RUNNING",
+      "objectName": "java.lang:type=Runtime"
+    },
+    {
+      "name": "WildFly Application Server",
+      "type": "ApplicationServer",
+      "domain": "system",
+      "state": "RUNNING"
+    },
+    ...
+  ]
+}
+```
+
+**Usage:**
+```bash
+curl http://localhost:8080/comms_processor/api/status/serverStatus
 ```
 
 ## Testing
