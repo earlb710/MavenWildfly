@@ -183,6 +183,44 @@ curl http://localhost:8080/comms_processor/api/status/ping
 curl http://localhost:8080/comms_processor/api/status/serverStatus
 ```
 
+#### 3. Datasources Endpoint
+
+**Endpoint:** `GET /api/status/datasources`
+
+**Description:** Returns a list of all available datasources configured in WildFly, including both standard and XA datasources.
+
+**Response Example:**
+```json
+{
+  "status": "ok",
+  "timestamp": 1706012345678,
+  "datasourcesCount": 2,
+  "datasources": [
+    {
+      "name": "PostgresDS",
+      "jndiName": "java:jboss/datasources/PostgresDS",
+      "enabled": true,
+      "driverName": "postgresql",
+      "connectionUrl": "jdbc:postgresql://localhost:5432/comms_db",
+      "objectName": "jboss.as:subsystem=datasources,data-source=PostgresDS"
+    },
+    {
+      "name": "OracleDS",
+      "jndiName": "java:jboss/datasources/OracleDS",
+      "enabled": true,
+      "driverName": "oracle",
+      "connectionUrl": "jdbc:oracle:thin:@localhost:1521:ORCL",
+      "objectName": "jboss.as:subsystem=datasources,data-source=OracleDS"
+    }
+  ]
+}
+```
+
+**Usage:**
+```bash
+curl http://localhost:8080/comms_processor/api/status/datasources
+```
+
 ## Testing
 
 Run tests with:

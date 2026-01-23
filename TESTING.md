@@ -63,6 +63,43 @@ Expected response (example):
 Using a browser:
 - Navigate to: http://localhost:8080/comms_processor/api/status/serverStatus
 
+### 3. Test Datasources Endpoint
+
+Using curl:
+```bash
+curl http://localhost:8080/comms_processor/api/status/datasources
+```
+
+Expected response (example):
+```json
+{
+  "status": "ok",
+  "timestamp": 1706012345678,
+  "datasourcesCount": 2,
+  "datasources": [
+    {
+      "name": "PostgresDS",
+      "jndiName": "java:jboss/datasources/PostgresDS",
+      "enabled": true,
+      "driverName": "postgresql",
+      "connectionUrl": "jdbc:postgresql://localhost:5432/comms_db",
+      "objectName": "jboss.as:subsystem=datasources,data-source=PostgresDS"
+    },
+    {
+      "name": "OracleDS",
+      "jndiName": "java:jboss/datasources/OracleDS",
+      "enabled": true,
+      "driverName": "oracle",
+      "connectionUrl": "jdbc:oracle:thin:@localhost:1521:ORCL",
+      "objectName": "jboss.as:subsystem=datasources,data-source=OracleDS"
+    }
+  ]
+}
+```
+
+Using a browser:
+- Navigate to: http://localhost:8080/comms_processor/api/status/datasources
+
 ## Pretty Print JSON (Optional)
 
 For better readability in the terminal:
@@ -70,6 +107,7 @@ For better readability in the terminal:
 ```bash
 curl http://localhost:8080/comms_processor/api/status/ping | jq .
 curl http://localhost:8080/comms_processor/api/status/serverStatus | jq .
+curl http://localhost:8080/comms_processor/api/status/datasources | jq .
 ```
 
 ## Testing with Different Tools
@@ -78,6 +116,7 @@ curl http://localhost:8080/comms_processor/api/status/serverStatus | jq .
 ```bash
 http GET http://localhost:8080/comms_processor/api/status/ping
 http GET http://localhost:8080/comms_processor/api/status/serverStatus
+http GET http://localhost:8080/comms_processor/api/status/datasources
 ```
 
 ### Using Postman or Insomnia
