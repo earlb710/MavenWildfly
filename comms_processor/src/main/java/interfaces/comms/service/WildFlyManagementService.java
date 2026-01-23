@@ -3,6 +3,7 @@ package interfaces.comms.service;
 import jakarta.annotation.PostConstruct;
 import jakarta.ejb.Singleton;
 import jakarta.ejb.Startup;
+// JMX imports remain javax.* as they are part of JDK, not Jakarta EE
 import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
