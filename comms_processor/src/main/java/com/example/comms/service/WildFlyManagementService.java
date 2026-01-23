@@ -60,11 +60,9 @@ public class WildFlyManagementService {
                     
                     // Try to get additional attributes if available
                     try {
-                        if (mbeanServer.isRegistered(objectName)) {
-                            String state = getServiceState(objectName);
-                            if (state != null) {
-                                serviceInfo.put("state", state);
-                            }
+                        String state = getServiceState(objectName);
+                        if (state != null) {
+                            serviceInfo.put("state", state);
                         }
                     } catch (Exception e) {
                         // Ignore if we can't get state - not all MBeans have this attribute
