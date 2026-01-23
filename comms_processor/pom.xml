@@ -20,7 +20,7 @@
         
         <!-- Dependency versions -->
         <jakartaee.api.version>8.0.0</jakartaee.api.version>
-        <postgresql.version>42.7.1</postgresql.version>
+        <postgresql.version>42.7.4</postgresql.version>
         <oracle.version>21.9.0.0</oracle.version>
         <junit.version>4.13.2</junit.version>
     </properties>

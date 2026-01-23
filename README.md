@@ -32,7 +32,7 @@ comms_processor/
 ## Dependencies
 
 - **Jakarta EE API 8.0.0** - Java EE platform APIs (provided by Wildfly)
-- **PostgreSQL JDBC Driver 42.7.1** - PostgreSQL database connectivity
+- **PostgreSQL JDBC Driver 42.7.4** - PostgreSQL database connectivity (patched for SQL injection vulnerabilities)
 - **Oracle JDBC Driver 21.9.0.0** - Oracle database connectivity
 - **JUnit 4.13.2** - Unit testing framework
 
