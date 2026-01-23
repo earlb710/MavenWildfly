@@ -1,6 +1,6 @@
-package com.example.comms.rest;
+package interfaces.comms.rest;
 
-import com.example.comms.service.WildFlyManagementService;
+import interfaces.comms.service.WildFlyManagementService;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;

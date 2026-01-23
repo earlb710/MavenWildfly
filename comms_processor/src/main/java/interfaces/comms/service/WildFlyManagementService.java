@@ -1,4 +1,4 @@
-package com.example.comms.service;
+package interfaces.comms.service;
 
 import javax.annotation.PostConstruct;
 import javax.ejb.Singleton;
