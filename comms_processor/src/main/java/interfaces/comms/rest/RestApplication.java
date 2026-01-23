@@ -1,5 +1,7 @@
 package interfaces.comms.rest;
 
+import interfaces.comms.rest.StatusResource;
+
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 import java.util.HashSet;
