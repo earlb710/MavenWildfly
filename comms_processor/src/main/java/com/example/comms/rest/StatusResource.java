@@ -68,4 +68,34 @@ public class StatusResource {
                           .build();
         }
     }
+
+    /**
+     * Datasources endpoint that lists all available datasources configured in WildFly.
+     * 
+     * @return Response with list of datasources
+     */
+    @GET
+    @Path("/datasources")
+    public Response datasources() {
+        try {
+            List<Map<String, Object>> datasources = managementService.getDatasources();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "ok");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("datasourcesCount", datasources.size());
+            response.put("datasources", datasources);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "Failed to retrieve datasources: " + e.getMessage());
+            errorResponse.put("timestamp", System.currentTimeMillis());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                          .entity(errorResponse)
+                          .build();
+        }
+    }
 }

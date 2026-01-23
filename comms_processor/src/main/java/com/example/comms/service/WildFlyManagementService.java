@@ -138,4 +138,115 @@ public class WildFlyManagementService {
         appServer.put("state", "RUNNING");
         services.add(appServer);
     }
+
+    /**
+     * Retrieves a list of all available datasources configured in WildFly.
+     * This includes datasources registered in the JBoss/WildFly subsystem.
+     * 
+     * @return List of datasource information maps
+     */
+    public List<Map<String, Object>> getDatasources() {
+        List<Map<String, Object>> datasources = new ArrayList<>();
+        
+        try {
+            // Query for JBoss datasource MBeans
+            ObjectName datasourceQuery = new ObjectName("jboss.as:subsystem=datasources,data-source=*");
+            Set<ObjectInstance> datasourceMBeans = mbeanServer.queryMBeans(datasourceQuery, null);
+            
+            for (ObjectInstance mBean : datasourceMBeans) {
+                ObjectName objectName = mBean.getObjectName();
+                Map<String, Object> datasourceInfo = new HashMap<>();
+                
+                // Get datasource name from the ObjectName
+                String dsName = objectName.getKeyProperty("data-source");
+                if (dsName != null) {
+                    datasourceInfo.put("name", dsName);
+                    datasourceInfo.put("objectName", objectName.toString());
+                    
+                    // Try to get additional datasource attributes
+                    try {
+                        Object jndiName = mbeanServer.getAttribute(objectName, "jndi-name");
+                        if (jndiName != null) {
+                            datasourceInfo.put("jndiName", jndiName.toString());
+                        }
+                    } catch (Exception e) {
+                        // Attribute might not be available
+                    }
+                    
+                    try {
+                        Object enabled = mbeanServer.getAttribute(objectName, "enabled");
+                        if (enabled != null) {
+                            datasourceInfo.put("enabled", enabled);
+                        }
+                    } catch (Exception e) {
+                        // Attribute might not be available
+                    }
+                    
+                    try {
+                        Object driverName = mbeanServer.getAttribute(objectName, "driver-name");
+                        if (driverName != null) {
+                            datasourceInfo.put("driverName", driverName.toString());
+                        }
+                    } catch (Exception e) {
+                        // Attribute might not be available
+                    }
+                    
+                    try {
+                        Object connectionUrl = mbeanServer.getAttribute(objectName, "connection-url");
+                        if (connectionUrl != null) {
+                            datasourceInfo.put("connectionUrl", connectionUrl.toString());
+                        }
+                    } catch (Exception e) {
+                        // Attribute might not be available
+                    }
+                    
+                    datasources.add(datasourceInfo);
+                }
+            }
+            
+            // Also check for XA datasources
+            ObjectName xaDatasourceQuery = new ObjectName("jboss.as:subsystem=datasources,xa-data-source=*");
+            Set<ObjectInstance> xaDatasourceMBeans = mbeanServer.queryMBeans(xaDatasourceQuery, null);
+            
+            for (ObjectInstance mBean : xaDatasourceMBeans) {
+                ObjectName objectName = mBean.getObjectName();
+                Map<String, Object> datasourceInfo = new HashMap<>();
+                
+                String dsName = objectName.getKeyProperty("xa-data-source");
+                if (dsName != null) {
+                    datasourceInfo.put("name", dsName);
+                    datasourceInfo.put("type", "XA");
+                    datasourceInfo.put("objectName", objectName.toString());
+                    
+                    try {
+                        Object jndiName = mbeanServer.getAttribute(objectName, "jndi-name");
+                        if (jndiName != null) {
+                            datasourceInfo.put("jndiName", jndiName.toString());
+                        }
+                    } catch (Exception e) {
+                        // Attribute might not be available
+                    }
+                    
+                    try {
+                        Object enabled = mbeanServer.getAttribute(objectName, "enabled");
+                        if (enabled != null) {
+                            datasourceInfo.put("enabled", enabled);
+                        }
+                    } catch (Exception e) {
+                        // Attribute might not be available
+                    }
+                    
+                    datasources.add(datasourceInfo);
+                }
+            }
+            
+            logger.info("Retrieved " + datasources.size() + " datasources");
+            
+        } catch (Exception e) {
+            logger.severe("Error retrieving datasources: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve datasources", e);
+        }
+        
+        return datasources;
+    }
 }
