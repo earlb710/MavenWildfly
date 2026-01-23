@@ -161,44 +161,11 @@ public class WildFlyManagementService {
                 String dsName = objectName.getKeyProperty("data-source");
                 if (dsName != null) {
                     datasourceInfo.put("name", dsName);
+                    datasourceInfo.put("type", "STANDARD");
                     datasourceInfo.put("objectName", objectName.toString());
                     
-                    // Try to get additional datasource attributes
-                    try {
-                        Object jndiName = mbeanServer.getAttribute(objectName, "jndi-name");
-                        if (jndiName != null) {
-                            datasourceInfo.put("jndiName", jndiName.toString());
-                        }
-                    } catch (Exception e) {
-                        // Attribute might not be available
-                    }
-                    
-                    try {
-                        Object enabled = mbeanServer.getAttribute(objectName, "enabled");
-                        if (enabled != null) {
-                            datasourceInfo.put("enabled", enabled);
-                        }
-                    } catch (Exception e) {
-                        // Attribute might not be available
-                    }
-                    
-                    try {
-                        Object driverName = mbeanServer.getAttribute(objectName, "driver-name");
-                        if (driverName != null) {
-                            datasourceInfo.put("driverName", driverName.toString());
-                        }
-                    } catch (Exception e) {
-                        // Attribute might not be available
-                    }
-                    
-                    try {
-                        Object connectionUrl = mbeanServer.getAttribute(objectName, "connection-url");
-                        if (connectionUrl != null) {
-                            datasourceInfo.put("connectionUrl", connectionUrl.toString());
-                        }
-                    } catch (Exception e) {
-                        // Attribute might not be available
-                    }
+                    // Get datasource attributes
+                    addDatasourceAttributes(objectName, datasourceInfo);
                     
                     datasources.add(datasourceInfo);
                 }
@@ -218,23 +185,8 @@ public class WildFlyManagementService {
                     datasourceInfo.put("type", "XA");
                     datasourceInfo.put("objectName", objectName.toString());
                     
-                    try {
-                        Object jndiName = mbeanServer.getAttribute(objectName, "jndi-name");
-                        if (jndiName != null) {
-                            datasourceInfo.put("jndiName", jndiName.toString());
-                        }
-                    } catch (Exception e) {
-                        // Attribute might not be available
-                    }
-                    
-                    try {
-                        Object enabled = mbeanServer.getAttribute(objectName, "enabled");
-                        if (enabled != null) {
-                            datasourceInfo.put("enabled", enabled);
-                        }
-                    } catch (Exception e) {
-                        // Attribute might not be available
-                    }
+                    // Get datasource attributes
+                    addDatasourceAttributes(objectName, datasourceInfo);
                     
                     datasources.add(datasourceInfo);
                 }
@@ -248,5 +200,55 @@ public class WildFlyManagementService {
         }
         
         return datasources;
+    }
+
+    /**
+     * Adds datasource attributes to the provided datasource info map.
+     * Attempts to retrieve common attributes like JNDI name, enabled status,
+     * driver name, and connection URL.
+     * 
+     * @param objectName The MBean ObjectName for the datasource
+     * @param datasourceInfo The map to populate with attributes
+     */
+    private void addDatasourceAttributes(ObjectName objectName, Map<String, Object> datasourceInfo) {
+        // Try to get JNDI name
+        try {
+            Object jndiName = mbeanServer.getAttribute(objectName, "jndi-name");
+            if (jndiName != null) {
+                datasourceInfo.put("jndiName", jndiName.toString());
+            }
+        } catch (Exception e) {
+            // Attribute might not be available
+        }
+        
+        // Try to get enabled status
+        try {
+            Object enabled = mbeanServer.getAttribute(objectName, "enabled");
+            if (enabled != null) {
+                datasourceInfo.put("enabled", enabled);
+            }
+        } catch (Exception e) {
+            // Attribute might not be available
+        }
+        
+        // Try to get driver name
+        try {
+            Object driverName = mbeanServer.getAttribute(objectName, "driver-name");
+            if (driverName != null) {
+                datasourceInfo.put("driverName", driverName.toString());
+            }
+        } catch (Exception e) {
+            // Attribute might not be available
+        }
+        
+        // Try to get connection URL
+        try {
+            Object connectionUrl = mbeanServer.getAttribute(objectName, "connection-url");
+            if (connectionUrl != null) {
+                datasourceInfo.put("connectionUrl", connectionUrl.toString());
+            }
+        } catch (Exception e) {
+            // Attribute might not be available
+        }
     }
 }

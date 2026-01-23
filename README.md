@@ -198,6 +198,7 @@ curl http://localhost:8080/comms_processor/api/status/serverStatus
   "datasources": [
     {
       "name": "PostgresDS",
+      "type": "STANDARD",
       "jndiName": "java:jboss/datasources/PostgresDS",
       "enabled": true,
       "driverName": "postgresql",
@@ -206,6 +207,7 @@ curl http://localhost:8080/comms_processor/api/status/serverStatus
     },
     {
       "name": "OracleDS",
+      "type": "STANDARD",
       "jndiName": "java:jboss/datasources/OracleDS",
       "enabled": true,
       "driverName": "oracle",

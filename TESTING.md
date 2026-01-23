@@ -79,6 +79,7 @@ Expected response (example):
   "datasources": [
     {
       "name": "PostgresDS",
+      "type": "STANDARD",
       "jndiName": "java:jboss/datasources/PostgresDS",
       "enabled": true,
       "driverName": "postgresql",
@@ -87,6 +88,7 @@ Expected response (example):
     },
     {
       "name": "OracleDS",
+      "type": "STANDARD",
       "jndiName": "java:jboss/datasources/OracleDS",
       "enabled": true,
       "driverName": "oracle",
