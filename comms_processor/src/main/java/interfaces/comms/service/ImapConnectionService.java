@@ -119,6 +119,8 @@ public class ImapConnectionService {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            logger.info("Attempting to open IMAPS connection - host: " + host + ", username: " + username);
+            
             // Validate input parameters
             Map<String, Object> validationResult = validateCredentials(host, username, password);
             if (validationResult != null) {
@@ -132,17 +134,19 @@ public class ImapConnectionService {
             ImapConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
             
             if (connectionInfo.isConnected()) {
+                logger.info("IMAPS connection opened successfully - host: " + host + ", username: " + username);
                 result.put("success", true);
                 result.put("host", host);
                 result.put("username", username);
                 result.put("cached", true);
             } else {
+                logger.severe("IMAPS connection failed: Connection not established - host: " + host + ", username: " + username);
                 result.put("success", false);
                 result.put("error", "Connection not established");
             }
             
         } catch (Exception e) {
-            logger.severe("Failed to open cached connection: " + e.getMessage());
+            logger.severe("Failed to open cached IMAPS connection - host: " + host + ", username: " + username + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -161,13 +165,17 @@ public class ImapConnectionService {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            logger.info("Attempting to close IMAPS connection - host: " + host + ", username: " + username);
             boolean closed = cacheService.closeConnection(host, username);
             result.put("success", closed);
             if (!closed) {
+                logger.warning("IMAPS connection not found in cache - host: " + host + ", username: " + username);
                 result.put("message", "Connection not found in cache");
+            } else {
+                logger.info("IMAPS connection closed successfully - host: " + host + ", username: " + username);
             }
         } catch (Exception e) {
-            logger.severe("Failed to close connection: " + e.getMessage());
+            logger.severe("Failed to close IMAPS connection - host: " + host + ", username: " + username + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -189,6 +197,8 @@ public class ImapConnectionService {
         jakarta.mail.Folder folder = null;
         
         try {
+            logger.info("Attempting to get mailbox count - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + (mailboxFolder != null ? mailboxFolder : "INBOX"));
+            
             // Validate and get connection
             Map<String, Object> validationResult = validateAndGetConnection(mailboxHost, mailboxUser, mailboxFolder);
             if (validationResult.containsKey("error")) {
@@ -204,6 +214,8 @@ public class ImapConnectionService {
             
             int messageCount = folder.getMessageCount();
             
+            logger.info("Mailbox count retrieved successfully - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + ", count: " + messageCount);
+            
             result.put("success", true);
             result.put("mailboxHost", mailboxHost);
             result.put("mailboxUser", mailboxUser);
@@ -211,7 +223,7 @@ public class ImapConnectionService {
             result.put("messageCount", messageCount);
             
         } catch (Exception e) {
-            logger.severe("Failed to get mailbox count: " + e.getMessage());
+            logger.severe("Failed to get mailbox count - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         } finally {
@@ -242,6 +254,8 @@ public class ImapConnectionService {
         jakarta.mail.Folder folder = null;
         
         try {
+            logger.info("Attempting to get mailbox stats - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + (mailboxFolder != null ? mailboxFolder : "INBOX"));
+            
             // Validate and get connection
             Map<String, Object> validationResult = validateAndGetConnection(mailboxHost, mailboxUser, mailboxFolder);
             if (validationResult.containsKey("error")) {
@@ -256,6 +270,7 @@ public class ImapConnectionService {
             folder.open(jakarta.mail.Folder.READ_ONLY);
             
             int messageCount = folder.getMessageCount();
+            logger.info("Processing " + messageCount + " messages for statistics - folder: " + mailboxFolder);
             
             // Initialize statistics
             long totalSize = 0;
@@ -276,6 +291,8 @@ public class ImapConnectionService {
                     fetchProfile.add(jakarta.mail.FetchProfile.Item.SIZE);
                     fetchProfile.add(jakarta.mail.FetchProfile.Item.ENVELOPE);
                     folder.fetch(messages, fetchProfile);
+                    
+                    logger.fine("Processing batch " + start + "-" + end + " of " + messageCount);
                     
                     for (jakarta.mail.Message message : messages) {
                         // Get message size
@@ -304,6 +321,9 @@ public class ImapConnectionService {
                 }
             }
             
+            logger.info("Mailbox stats retrieved successfully - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + 
+                       ", messageCount: " + messageCount + ", totalSize: " + totalSize + " bytes");
+            
             result.put("success", true);
             result.put("mailboxHost", mailboxHost);
             result.put("mailboxUser", mailboxUser);
@@ -316,7 +336,7 @@ public class ImapConnectionService {
             result.put("newestDate", newestDate != null ? newestDate.toString() : null);
             
         } catch (Exception e) {
-            logger.severe("Failed to get mailbox stats: " + e.getMessage());
+            logger.severe("Failed to get mailbox stats - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         } finally {

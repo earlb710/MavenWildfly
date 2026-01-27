@@ -75,20 +75,25 @@ public class SmtpConnectionService {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            logger.info("Attempting to open SMTP connection - host: " + host + ", username: " + username);
+            
             // Validate input parameters
             if (host == null || host.trim().isEmpty()) {
+                logger.warning("SMTP connection failed: Host is required");
                 result.put("success", false);
                 result.put("error", "Host is required");
                 return result;
             }
             
             if (username == null || username.trim().isEmpty()) {
+                logger.warning("SMTP connection failed: Username is required");
                 result.put("success", false);
                 result.put("error", "Username is required");
                 return result;
             }
             
             if (password == null) {
+                logger.warning("SMTP connection failed: Password is required");
                 result.put("success", false);
                 result.put("error", "Password is required");
                 return result;
@@ -105,18 +110,20 @@ public class SmtpConnectionService {
             SmtpConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
             
             if (connectionInfo.isConnected()) {
+                logger.info("SMTP connection opened successfully - host: " + host + ", username: " + username + ", port: " + port);
                 result.put("success", true);
                 result.put("host", host);
                 result.put("username", username);
                 result.put("port", port);
                 result.put("cached", true);
             } else {
+                logger.severe("SMTP connection failed: Connection not established - host: " + host + ", username: " + username);
                 result.put("success", false);
                 result.put("error", "Connection not established");
             }
             
         } catch (Exception e) {
-            logger.severe("Failed to open cached SMTP connection: " + e.getMessage());
+            logger.severe("Failed to open cached SMTP connection - host: " + host + ", username: " + username + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -135,13 +142,17 @@ public class SmtpConnectionService {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            logger.info("Attempting to close SMTP connection - host: " + host + ", username: " + username);
             boolean closed = cacheService.closeConnection(host, username);
             result.put("success", closed);
             if (!closed) {
+                logger.warning("SMTP connection not found in cache - host: " + host + ", username: " + username);
                 result.put("message", "Connection not found in cache");
+            } else {
+                logger.info("SMTP connection closed successfully - host: " + host + ", username: " + username);
             }
         } catch (Exception e) {
-            logger.severe("Failed to close SMTP connection: " + e.getMessage());
+            logger.severe("Failed to close SMTP connection - host: " + host + ", username: " + username + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -166,26 +177,32 @@ public class SmtpConnectionService {
         long startTime = System.currentTimeMillis();
         
         try {
+            logger.info("Attempting to send text email - from: " + fromAddress + ", to: " + toAddress + ", subject: " + subject);
+            
             // Validate required fields
             if (smtpHost == null || smtpHost.trim().isEmpty()) {
+                logger.warning("Send text email failed: smtpHost is required");
                 result.put("success", false);
                 result.put("error", "smtpHost is required");
                 return result;
             }
             
             if (smtpUser == null || smtpUser.trim().isEmpty()) {
+                logger.warning("Send text email failed: smtpUser is required");
                 result.put("success", false);
                 result.put("error", "smtpUser is required");
                 return result;
             }
             
             if (fromAddress == null || fromAddress.trim().isEmpty()) {
+                logger.warning("Send text email failed: fromAddress is required");
                 result.put("success", false);
                 result.put("error", "fromAddress is required");
                 return result;
             }
             
             if (toAddress == null || toAddress.trim().isEmpty()) {
+                logger.warning("Send text email failed: toAddress is required");
                 result.put("success", false);
                 result.put("error", "toAddress is required");
                 return result;
@@ -203,6 +220,7 @@ public class SmtpConnectionService {
             SmtpConnectionInfo connectionInfo = cacheService.getExistingConnection(smtpHost, smtpUser);
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
+                logger.severe("Send text email failed: Connection not open - host: " + smtpHost + ", user: " + smtpUser);
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
@@ -238,14 +256,15 @@ public class SmtpConnectionService {
             
             // Warn if approaching batch limit
             if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
+                logger.warning("Max batch size reached - emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect() + ", maxBatchSize: " + maxBatchSize);
                 result.put("warning", "Max batch size (" + maxBatchSize + ") reached. Consider reconnecting.");
             }
             
-            logger.info("Email sent successfully from " + fromAddress + " to " + toAddress + " in " + sendTime + "ms");
+            logger.info("Text email sent successfully - from: " + fromAddress + ", to: " + toAddress + ", sendTime: " + sendTime + "ms, emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect());
 
             
         } catch (Exception e) {
-            logger.severe("Failed to send email: " + e.getMessage());
+            logger.severe("Failed to send text email - from: " + fromAddress + ", to: " + toAddress + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -267,20 +286,25 @@ public class SmtpConnectionService {
         long startTime = System.currentTimeMillis();
         
         try {
+            logger.info("Attempting to send .eml format email - host: " + smtpHost + ", user: " + smtpUser);
+            
             // Validate required fields
             if (smtpHost == null || smtpHost.trim().isEmpty()) {
+                logger.warning("Send .eml email failed: smtpHost is required");
                 result.put("success", false);
                 result.put("error", "smtpHost is required");
                 return result;
             }
             
             if (smtpUser == null || smtpUser.trim().isEmpty()) {
+                logger.warning("Send .eml email failed: smtpUser is required");
                 result.put("success", false);
                 result.put("error", "smtpUser is required");
                 return result;
             }
             
             if (data == null || data.trim().isEmpty()) {
+                logger.warning("Send .eml email failed: data is required");
                 result.put("success", false);
                 result.put("error", "data is required");
                 return result;
@@ -290,6 +314,7 @@ public class SmtpConnectionService {
             SmtpConnectionInfo connectionInfo = cacheService.getExistingConnection(smtpHost, smtpUser);
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
+                logger.severe("Send .eml email failed: Connection not open - host: " + smtpHost + ", user: " + smtpUser);
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
@@ -316,14 +341,15 @@ public class SmtpConnectionService {
             
             // Warn if approaching batch limit
             if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
+                logger.warning("Max batch size reached after .eml send - emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect() + ", maxBatchSize: " + maxBatchSize);
                 result.put("warning", "Max batch size (" + maxBatchSize + ") reached. Consider reconnecting.");
             }
             
-            logger.info("Email sent successfully via .eml data (" + sendResult.get("dataSize") + " bytes) in " + sendTime + "ms");
+            logger.info(".eml email sent successfully - host: " + smtpHost + ", user: " + smtpUser + ", dataSize: " + sendResult.get("dataSize") + " bytes, sendTime: " + sendTime + "ms, emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect());
 
             
         } catch (Exception e) {
-            logger.severe("Failed to send email from .eml data: " + e.getMessage());
+            logger.severe("Failed to send .eml email - host: " + smtpHost + ", user: " + smtpUser + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -346,20 +372,25 @@ public class SmtpConnectionService {
         long startTime = System.currentTimeMillis();
         
         try {
+            logger.info("Attempting to send batch of " + (dataArray != null ? dataArray.size() : 0) + " .eml emails - host: " + smtpHost + ", user: " + smtpUser);
+            
             // Validate required fields
             if (smtpHost == null || smtpHost.trim().isEmpty()) {
+                logger.warning("Send batch emails failed: smtpHost is required");
                 result.put("success", false);
                 result.put("error", "smtpHost is required");
                 return result;
             }
             
             if (smtpUser == null || smtpUser.trim().isEmpty()) {
+                logger.warning("Send batch emails failed: smtpUser is required");
                 result.put("success", false);
                 result.put("error", "smtpUser is required");
                 return result;
             }
             
             if (dataArray == null || dataArray.isEmpty()) {
+                logger.warning("Send batch emails failed: data array is required and must not be empty");
                 result.put("success", false);
                 result.put("error", "data array is required and must not be empty");
                 return result;
@@ -367,6 +398,7 @@ public class SmtpConnectionService {
             
             // Check batch size constraints
             if (dataArray.size() < minBatchSize) {
+                logger.warning("Send batch emails failed: Batch size (" + dataArray.size() + ") is below minimum (" + minBatchSize + ")");
                 result.put("success", false);
                 result.put("error", "Batch size (" + dataArray.size() + ") is below minimum (" + minBatchSize + ")");
                 return result;
@@ -376,6 +408,7 @@ public class SmtpConnectionService {
             SmtpConnectionInfo connectionInfo = cacheService.getExistingConnection(smtpHost, smtpUser);
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
+                logger.severe("Send batch emails failed: Connection not open - host: " + smtpHost + ", user: " + smtpUser);
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
@@ -384,6 +417,7 @@ public class SmtpConnectionService {
             // Get credentials for reconnection (stored in connection info)
             String password = connectionInfo.getPassword();
             if (password == null || password.isEmpty()) {
+                logger.severe("Send batch emails failed: Password not available for automatic reconnection");
                 result.put("success", false);
                 result.put("error", "Password not available for automatic reconnection. Connection may have expired.");
                 return result;
@@ -422,6 +456,7 @@ public class SmtpConnectionService {
                 }
                 
                 if (data == null || data.trim().isEmpty()) {
+                    logger.warning("Email at index " + i + " has empty data - skipping");
                     emailResult.put("success", false);
                     emailResult.put("error", "data at index " + i + " is empty");
                     failureCount++;
@@ -438,9 +473,11 @@ public class SmtpConnectionService {
                         
                         // Increment email counter (thread-safe)
                         connectionInfo.incrementEmailsSent();
+                        logger.fine("Email at index " + i + " sent successfully - dataSize: " + dataSize + " bytes");
                     } else {
                         emailResult.put("error", sendResult.get("error"));
                         failureCount++;
+                        logger.warning("Email at index " + i + " failed - error: " + sendResult.get("error"));
                     }
                 }
                 
@@ -465,12 +502,14 @@ public class SmtpConnectionService {
             }
             result.put("results", results);
             
-            logger.info("Sent " + successCount + "/" + dataArray.size() + " emails successfully in " + sendTime + "ms" +
-                       (reconnectCount > 0 ? " (auto-reconnected " + reconnectCount + " times)" : ""));
+            logger.info("Batch send completed - total: " + dataArray.size() + ", success: " + successCount + ", failed: " + failureCount + 
+                       ", totalDataSize: " + totalDataSize + " bytes, sendTime: " + sendTime + "ms" +
+                       (reconnectCount > 0 ? ", auto-reconnected: " + reconnectCount + " times" : "") + 
+                       ", emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect());
 
             
         } catch (Exception e) {
-            logger.severe("Failed to send emails from .eml data: " + e.getMessage());
+            logger.severe("Failed to send batch of emails - host: " + smtpHost + ", user: " + smtpUser + ", error: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }
