@@ -159,14 +159,22 @@ public class SmtpConnectionResource {
      * Sends an email in .eml format using a cached SMTP connection.
      * Requires an existing cached connection (use /api/smtp/open first).
      * 
-     * Request body example:
+     * Request body example (single email):
      * {
      *   "smtpHost": "smtp.gmail.com",
      *   "smtpUser": "user@gmail.com",
      *   "data": "base64-encoded-eml-data"
      * }
      * 
-     * The data field should contain base64 encoded .eml format email.
+     * Request body example (multiple emails):
+     * {
+     *   "smtpHost": "smtp.gmail.com",
+     *   "smtpUser": "user@gmail.com",
+     *   "data": ["base64-encoded-eml-data-1", "base64-encoded-eml-data-2"]
+     * }
+     * 
+     * The data field can be a single string or an array of strings.
+     * Each data item should contain base64 encoded .eml format email.
      * Data can be optionally gzipped before base64 encoding.
      * 
      * @param request Map containing email parameters
@@ -174,7 +182,7 @@ public class SmtpConnectionResource {
      */
     @POST
     @Path("/send")
-    public Response sendEmail(Map<String, String> request) {
+    public Response sendEmail(Map<String, Object> request) {
         // Validate request body
         if (request == null) {
             Map<String, Object> error = new HashMap<>();
@@ -185,11 +193,31 @@ public class SmtpConnectionResource {
                     .build();
         }
         
-        String smtpHost = request.get("smtpHost");
-        String smtpUser = request.get("smtpUser");
-        String data = request.get("data");
+        String smtpHost = (String) request.get("smtpHost");
+        String smtpUser = (String) request.get("smtpUser");
+        Object dataField = request.get("data");
         
-        Map<String, Object> result = smtpConnectionService.sendEmail(smtpHost, smtpUser, data);
+        Map<String, Object> result;
+        
+        // Check if data is an array or a single string
+        if (dataField instanceof java.util.List) {
+            // Handle array of data
+            @SuppressWarnings("unchecked")
+            java.util.List<String> dataArray = (java.util.List<String>) dataField;
+            result = smtpConnectionService.sendEmails(smtpHost, smtpUser, dataArray);
+        } else if (dataField instanceof String) {
+            // Handle single data string
+            String data = (String) dataField;
+            result = smtpConnectionService.sendEmail(smtpHost, smtpUser, data);
+        } else {
+            // Invalid data type
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "data field must be a string or an array of strings");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
         
         if ((Boolean) result.get("success")) {
             return Response.ok(result).build();

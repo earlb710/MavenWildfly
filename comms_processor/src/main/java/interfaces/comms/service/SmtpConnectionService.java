@@ -256,6 +256,141 @@ public class SmtpConnectionService {
                 return result;
             }
             
+            // Process and send the email
+            Map<String, Object> sendResult = processAndSendEmail(smtpHost, connectionInfo, data);
+            if (!(Boolean) sendResult.get("success")) {
+                return sendResult;
+            }
+            
+            long sendTime = System.currentTimeMillis() - startTime;
+            
+            result.put("success", true);
+            result.put("smtpHost", smtpHost);
+            result.put("smtpUser", smtpUser);
+            result.put("sendTimeMs", sendTime);
+            result.put("dataSize", sendResult.get("dataSize"));
+            
+            logger.info("Email sent successfully via .eml data (" + sendResult.get("dataSize") + " bytes) in " + sendTime + "ms");
+            
+        } catch (Exception e) {
+            logger.severe("Failed to send email from .eml data: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Sends multiple emails in .eml format using a cached SMTP connection.
+     * Accepts an array of base64 encoded (optionally gzipped) .eml format data.
+     * 
+     * @param smtpHost The SMTP server host
+     * @param smtpUser The SMTP username
+     * @param dataArray Array of base64 encoded .eml data (possibly gzipped)
+     * @return Map containing success status and results for each email
+     */
+    public Map<String, Object> sendEmails(String smtpHost, String smtpUser, java.util.List<String> dataArray) {
+        Map<String, Object> result = new HashMap<>();
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            // Validate required fields
+            if (smtpHost == null || smtpHost.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "smtpHost is required");
+                return result;
+            }
+            
+            if (smtpUser == null || smtpUser.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "smtpUser is required");
+                return result;
+            }
+            
+            if (dataArray == null || dataArray.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "data array is required and must not be empty");
+                return result;
+            }
+            
+            // Get existing cached connection (do NOT create new one)
+            SmtpConnectionInfo connectionInfo = cacheService.getExistingConnection(smtpHost, smtpUser);
+            
+            if (connectionInfo == null || !connectionInfo.isConnected()) {
+                result.put("success", false);
+                result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
+                return result;
+            }
+            
+            // Process and send each email
+            java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
+            int successCount = 0;
+            int failureCount = 0;
+            long totalDataSize = 0;
+            
+            for (int i = 0; i < dataArray.size(); i++) {
+                String data = dataArray.get(i);
+                Map<String, Object> emailResult = new HashMap<>();
+                emailResult.put("index", i);
+                
+                if (data == null || data.trim().isEmpty()) {
+                    emailResult.put("success", false);
+                    emailResult.put("error", "data at index " + i + " is empty");
+                    failureCount++;
+                } else {
+                    Map<String, Object> sendResult = processAndSendEmail(smtpHost, connectionInfo, data);
+                    emailResult.put("success", sendResult.get("success"));
+                    
+                    if ((Boolean) sendResult.get("success")) {
+                        emailResult.put("dataSize", sendResult.get("dataSize"));
+                        totalDataSize += (Integer) sendResult.get("dataSize");
+                        successCount++;
+                    } else {
+                        emailResult.put("error", sendResult.get("error"));
+                        failureCount++;
+                    }
+                }
+                
+                results.add(emailResult);
+            }
+            
+            long sendTime = System.currentTimeMillis() - startTime;
+            
+            result.put("success", failureCount == 0);
+            result.put("smtpHost", smtpHost);
+            result.put("smtpUser", smtpUser);
+            result.put("sendTimeMs", sendTime);
+            result.put("totalEmails", dataArray.size());
+            result.put("successCount", successCount);
+            result.put("failureCount", failureCount);
+            result.put("totalDataSize", totalDataSize);
+            result.put("results", results);
+            
+            logger.info("Sent " + successCount + "/" + dataArray.size() + " emails successfully in " + sendTime + "ms");
+            
+        } catch (Exception e) {
+            logger.severe("Failed to send emails from .eml data: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Helper method to process and send a single email.
+     * Handles base64 decoding, gzip decompression, and .eml parsing.
+     * 
+     * @param smtpHost The SMTP server host
+     * @param connectionInfo The cached connection info
+     * @param data Base64 encoded .eml data
+     * @return Map containing success status and data size
+     */
+    private Map<String, Object> processAndSendEmail(String smtpHost, SmtpConnectionInfo connectionInfo, String data) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
             // Decode base64 data
             byte[] decodedData;
             try {
@@ -308,18 +443,10 @@ public class SmtpConnectionService {
             Transport transport = connectionInfo.getTransport();
             transport.sendMessage(message, message.getAllRecipients());
             
-            long sendTime = System.currentTimeMillis() - startTime;
-            
             result.put("success", true);
-            result.put("smtpHost", smtpHost);
-            result.put("smtpUser", smtpUser);
-            result.put("sendTimeMs", sendTime);
             result.put("dataSize", emlData.length);
             
-            logger.info("Email sent successfully via .eml data (" + emlData.length + " bytes) in " + sendTime + "ms");
-            
         } catch (Exception e) {
-            logger.severe("Failed to send email from .eml data: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }

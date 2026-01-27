@@ -644,9 +644,9 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
 
 **Endpoint:** `POST /api/smtp/send`
 
-**Description:** Sends an email in .eml format using a cached SMTP connection. Accepts base64 encoded (optionally gzipped) .eml format data. **Requires an existing cached connection** - use `/api/smtp/open` first to establish the connection.
+**Description:** Sends one or more emails in .eml format using a cached SMTP connection. Accepts base64 encoded (optionally gzipped) .eml format data. **Requires an existing cached connection** - use `/api/smtp/open` first to establish the connection.
 
-**Request Body:**
+**Request Body (Single Email):**
 ```json
 {
   "smtpHost": "smtp.gmail.com",
@@ -655,14 +655,29 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
 }
 ```
 
+**Request Body (Multiple Emails):**
+```json
+{
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "data": [
+    "base64-encoded-eml-data-1",
+    "base64-encoded-eml-data-2",
+    "base64-encoded-eml-data-3"
+  ]
+}
+```
+
 **Notes:**
 - `smtpHost` is required - the SMTP server host
 - `smtpUser` is required - the username/email used to open the connection
-- `data` is required - base64 encoded .eml format email
+- `data` is required - can be:
+  - A single string containing base64 encoded .eml format email
+  - An array of strings, each containing base64 encoded .eml format email
 - Data can be optionally gzipped before base64 encoding (automatically detected)
 - **Connection must already be open/cached** - Returns error if connection not found
 
-**Success Response (200 OK):**
+**Success Response (200 OK) - Single Email:**
 ```json
 {
   "success": true,
@@ -670,6 +685,68 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
   "smtpUser": "user@gmail.com",
   "sendTimeMs": 920,
   "dataSize": 4096
+}
+```
+
+**Success Response (200 OK) - Multiple Emails (All Successful):**
+```json
+{
+  "success": true,
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "sendTimeMs": 2750,
+  "totalEmails": 3,
+  "successCount": 3,
+  "failureCount": 0,
+  "totalDataSize": 12288,
+  "results": [
+    {
+      "index": 0,
+      "success": true,
+      "dataSize": 4096
+    },
+    {
+      "index": 1,
+      "success": true,
+      "dataSize": 4096
+    },
+    {
+      "index": 2,
+      "success": true,
+      "dataSize": 4096
+    }
+  ]
+}
+```
+
+**Partial Success Response (200 OK) - Some Emails Failed:**
+```json
+{
+  "success": false,
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "sendTimeMs": 1850,
+  "totalEmails": 3,
+  "successCount": 2,
+  "failureCount": 1,
+  "totalDataSize": 8192,
+  "results": [
+    {
+      "index": 0,
+      "success": true,
+      "dataSize": 4096
+    },
+    {
+      "index": 1,
+      "success": false,
+      "error": "Failed to parse .eml data: Invalid format"
+    },
+    {
+      "index": 2,
+      "success": true,
+      "dataSize": 4096
+    }
+  ]
 }
 ```
 
@@ -681,7 +758,7 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
 }
 ```
 
-**Usage Example:**
+**Usage Example (Single Email):**
 ```bash
 # First, open a connection
 curl -X POST http://localhost:8080/comms_processor/api/smtp/open \
@@ -702,6 +779,23 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/send \
     \"smtpHost\": \"smtp.gmail.com\",
     \"smtpUser\": \"user@gmail.com\",
     \"data\": \"$EML_DATA\"
+  }"
+```
+
+**Usage Example (Multiple Emails):**
+```bash
+# Encode multiple .eml files
+EML_DATA_1=$(base64 -w 0 email1.eml)
+EML_DATA_2=$(base64 -w 0 email2.eml)
+EML_DATA_3=$(base64 -w 0 email3.eml)
+
+# Send all emails in one request
+curl -X POST http://localhost:8080/comms_processor/api/smtp/send \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"smtpHost\": \"smtp.gmail.com\",
+    \"smtpUser\": \"user@gmail.com\",
+    \"data\": [\"$EML_DATA_1\", \"$EML_DATA_2\", \"$EML_DATA_3\"]
   }"
 ```
 
