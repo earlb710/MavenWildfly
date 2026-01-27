@@ -53,23 +53,28 @@ public class WildFlyManagementService {
                 
                 // Focus on WildFly/JBoss specific services and deployments
                 if (isRelevantService(domain)) {
-                    Map<String, Object> serviceInfo = new HashMap<>();
-                    serviceInfo.put("name", objectName.getKeyProperty("name"));
-                    serviceInfo.put("type", objectName.getKeyProperty("type"));
-                    serviceInfo.put("domain", domain);
-                    serviceInfo.put("objectName", objectName.toString());
+                    String serviceName = objectName.getKeyProperty("name");
                     
-                    // Try to get additional attributes if available
-                    try {
-                        String state = getServiceState(objectName);
-                        if (state != null) {
-                            serviceInfo.put("state", state);
+                    // Only include services that have a name
+                    if (serviceName != null && !serviceName.trim().isEmpty()) {
+                        Map<String, Object> serviceInfo = new HashMap<>();
+                        serviceInfo.put("name", serviceName);
+                        serviceInfo.put("type", objectName.getKeyProperty("type"));
+                        serviceInfo.put("domain", domain);
+                        serviceInfo.put("objectName", objectName.toString());
+                        
+                        // Try to get additional attributes if available
+                        try {
+                            String state = getServiceState(objectName);
+                            if (state != null) {
+                                serviceInfo.put("state", state);
+                            }
+                        } catch (Exception e) {
+                            // Ignore if we can't get state - not all MBeans have this attribute
                         }
-                    } catch (Exception e) {
-                        // Ignore if we can't get state - not all MBeans have this attribute
+                        
+                        services.add(serviceInfo);
                     }
-                    
-                    services.add(serviceInfo);
                 }
             }
             
