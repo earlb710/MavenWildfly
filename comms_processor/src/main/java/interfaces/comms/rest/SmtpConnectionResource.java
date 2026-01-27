@@ -201,9 +201,25 @@ public class SmtpConnectionResource {
         
         // Check if data is an array or a single string
         if (dataField instanceof java.util.List) {
-            // Handle array of data
+            // Handle array of data - validate all elements are strings
             @SuppressWarnings("unchecked")
-            java.util.List<String> dataArray = (java.util.List<String>) dataField;
+            java.util.List<Object> rawList = (java.util.List<Object>) dataField;
+            
+            // Validate all elements are strings
+            java.util.List<String> dataArray = new java.util.ArrayList<>();
+            for (int i = 0; i < rawList.size(); i++) {
+                Object element = rawList.get(i);
+                if (!(element instanceof String)) {
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("success", false);
+                    error.put("error", "data array element at index " + i + " must be a string");
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(error)
+                            .build();
+                }
+                dataArray.add((String) element);
+            }
+            
             result = smtpConnectionService.sendEmails(smtpHost, smtpUser, dataArray);
         } else if (dataField instanceof String) {
             // Handle single data string

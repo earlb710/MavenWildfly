@@ -343,8 +343,10 @@ public class SmtpConnectionService {
                     emailResult.put("success", sendResult.get("success"));
                     
                     if ((Boolean) sendResult.get("success")) {
-                        emailResult.put("dataSize", sendResult.get("dataSize"));
-                        totalDataSize += (Integer) sendResult.get("dataSize");
+                        Object dataSizeObj = sendResult.get("dataSize");
+                        int dataSize = dataSizeObj instanceof Number ? ((Number) dataSizeObj).intValue() : 0;
+                        emailResult.put("dataSize", dataSize);
+                        totalDataSize += dataSize;
                         successCount++;
                     } else {
                         emailResult.put("error", sendResult.get("error"));
