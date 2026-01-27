@@ -153,11 +153,12 @@ public class ImapConnectionResource {
      * 
      * Request body example:
      * {
-     *   "mailboxIdentifier": "user@gmail.com@imap.gmail.com",
-     *   "folder": "INBOX"  // optional, defaults to INBOX
+     *   "mailboxHost": "imap.gmail.com",
+     *   "mailboxUser": "user@gmail.com",
+     *   "mailboxFolder": "INBOX"  // optional, defaults to INBOX
      * }
      * 
-     * @param request Map containing mailboxIdentifier (username@host) and optional folder
+     * @param request Map containing mailboxHost, mailboxUser, and optional mailboxFolder
      * @return Response with message count
      */
     @POST
@@ -173,10 +174,53 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String mailboxIdentifier = request.get("mailboxIdentifier");
-        String folder = request.get("folder"); // Optional, defaults to INBOX
+        String mailboxHost = request.get("mailboxHost");
+        String mailboxUser = request.get("mailboxUser");
+        String mailboxFolder = request.get("mailboxFolder"); // Optional, defaults to INBOX
         
-        Map<String, Object> result = imapConnectionService.getMailboxCount(mailboxIdentifier, folder);
+        Map<String, Object> result = imapConnectionService.getMailboxCount(mailboxHost, mailboxUser, mailboxFolder);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(result)
+                    .build();
+        }
+    }
+    
+    /**
+     * Gets detailed statistics for emails in a folder.
+     * Requires an existing cached connection (use /api/imap/open first).
+     * 
+     * Request body example:
+     * {
+     *   "mailboxHost": "imap.gmail.com",
+     *   "mailboxUser": "user@gmail.com",
+     *   "mailboxFolder": "INBOX"  // optional, defaults to INBOX
+     * }
+     * 
+     * @param request Map containing mailboxHost, mailboxUser, and optional mailboxFolder
+     * @return Response with detailed statistics
+     */
+    @POST
+    @Path("/mailboxStats")
+    public Response getMailboxStats(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String mailboxHost = request.get("mailboxHost");
+        String mailboxUser = request.get("mailboxUser");
+        String mailboxFolder = request.get("mailboxFolder"); // Optional, defaults to INBOX
+        
+        Map<String, Object> result = imapConnectionService.getMailboxStats(mailboxHost, mailboxUser, mailboxFolder);
         
         if ((Boolean) result.get("success")) {
             return Response.ok(result).build();

@@ -179,47 +179,36 @@ public class ImapConnectionService {
      * Gets the count of emails in a folder for an existing cached connection.
      * Connection must already be open/cached, otherwise returns an error.
      * 
-     * @param mailboxIdentifier The mailbox identifier in format "username@host"
-     * @param folder The folder name (default "INBOX")
+     * @param mailboxHost The mailbox host
+     * @param mailboxUser The mailbox username
+     * @param mailboxFolder The folder name (default "INBOX")
      * @return Map containing success status and message count
      */
-    public Map<String, Object> getMailboxCount(String mailboxIdentifier, String folder) {
+    public Map<String, Object> getMailboxCount(String mailboxHost, String mailboxUser, String mailboxFolder) {
         Map<String, Object> result = new HashMap<>();
-        jakarta.mail.Folder mailFolder = null;
+        jakarta.mail.Folder folder = null;
         
         try {
-            // Validate mailbox identifier
-            if (mailboxIdentifier == null || mailboxIdentifier.trim().isEmpty()) {
+            // Validate required fields
+            if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
                 result.put("success", false);
-                result.put("error", "Mailbox identifier (username@host) is required");
+                result.put("error", "mailboxHost is required");
                 return result;
             }
             
-            // Parse username@host format
-            // Use lastIndexOf to handle usernames with @ symbols (e.g., user@domain@host)
-            int lastAtIndex = mailboxIdentifier.lastIndexOf('@');
-            if (lastAtIndex == -1) {
+            if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
                 result.put("success", false);
-                result.put("error", "Invalid mailbox identifier format. Expected: username@host");
-                return result;
-            }
-            
-            String username = mailboxIdentifier.substring(0, lastAtIndex);
-            String host = mailboxIdentifier.substring(lastAtIndex + 1);
-            
-            if (username.isEmpty() || host.isEmpty()) {
-                result.put("success", false);
-                result.put("error", "Invalid mailbox identifier. Username and host cannot be empty");
+                result.put("error", "mailboxUser is required");
                 return result;
             }
             
             // Default to INBOX if not specified
-            if (folder == null || folder.trim().isEmpty()) {
-                folder = "INBOX";
+            if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
+                mailboxFolder = "INBOX";
             }
             
             // Get existing cached connection (do NOT create new one)
-            ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(host, username);
+            ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(mailboxHost, mailboxUser);
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
                 result.put("success", false);
@@ -228,15 +217,16 @@ public class ImapConnectionService {
             }
             
             // Get the folder and count messages
-            mailFolder = connectionInfo.getStore().getFolder(folder);
-            mailFolder.open(jakarta.mail.Folder.READ_ONLY);
+            folder = connectionInfo.getStore().getFolder(mailboxFolder);
+            folder.open(jakarta.mail.Folder.READ_ONLY);
             
-            int messageCount = mailFolder.getMessageCount();
+            int messageCount = folder.getMessageCount();
             
             result.put("success", true);
-            result.put("folder", folder);
+            result.put("mailboxHost", mailboxHost);
+            result.put("mailboxUser", mailboxUser);
+            result.put("mailboxFolder", mailboxFolder);
             result.put("messageCount", messageCount);
-            result.put("mailboxIdentifier", mailboxIdentifier);
             
         } catch (Exception e) {
             logger.severe("Failed to get mailbox count: " + e.getMessage());
@@ -244,9 +234,122 @@ public class ImapConnectionService {
             result.put("error", e.getMessage());
         } finally {
             // Always close the folder
-            if (mailFolder != null) {
+            if (folder != null) {
                 try {
-                    mailFolder.close(false);
+                    folder.close(false);
+                } catch (Exception e) {
+                    logger.warning("Error closing folder: " + e.getMessage());
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Gets detailed statistics for emails in a folder for an existing cached connection.
+     * Connection must already be open/cached, otherwise returns an error.
+     * 
+     * @param mailboxHost The mailbox host
+     * @param mailboxUser The mailbox username
+     * @param mailboxFolder The folder name (default "INBOX")
+     * @return Map containing success status and detailed statistics
+     */
+    public Map<String, Object> getMailboxStats(String mailboxHost, String mailboxUser, String mailboxFolder) {
+        Map<String, Object> result = new HashMap<>();
+        jakarta.mail.Folder folder = null;
+        
+        try {
+            // Validate required fields
+            if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "mailboxHost is required");
+                return result;
+            }
+            
+            if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "mailboxUser is required");
+                return result;
+            }
+            
+            // Default to INBOX if not specified
+            if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
+                mailboxFolder = "INBOX";
+            }
+            
+            // Get existing cached connection (do NOT create new one)
+            ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(mailboxHost, mailboxUser);
+            
+            if (connectionInfo == null || !connectionInfo.isConnected()) {
+                result.put("success", false);
+                result.put("error", "Connection not open. Use /api/imap/open to establish a connection first");
+                return result;
+            }
+            
+            // Get the folder and open it
+            folder = connectionInfo.getStore().getFolder(mailboxFolder);
+            folder.open(jakarta.mail.Folder.READ_ONLY);
+            
+            int messageCount = folder.getMessageCount();
+            
+            // Initialize statistics
+            long totalSize = 0;
+            Integer biggestSize = null;
+            Integer smallestSize = null;
+            java.util.Date oldestDate = null;
+            java.util.Date newestDate = null;
+            
+            if (messageCount > 0) {
+                // Get all messages
+                jakarta.mail.Message[] messages = folder.getMessages();
+                
+                for (jakarta.mail.Message message : messages) {
+                    // Get message size
+                    int size = message.getSize();
+                    if (size > 0) {
+                        totalSize += size;
+                        if (biggestSize == null || size > biggestSize) {
+                            biggestSize = size;
+                        }
+                        if (smallestSize == null || size < smallestSize) {
+                            smallestSize = size;
+                        }
+                    }
+                    
+                    // Get message date
+                    java.util.Date receivedDate = message.getReceivedDate();
+                    if (receivedDate != null) {
+                        if (oldestDate == null || receivedDate.before(oldestDate)) {
+                            oldestDate = receivedDate;
+                        }
+                        if (newestDate == null || receivedDate.after(newestDate)) {
+                            newestDate = receivedDate;
+                        }
+                    }
+                }
+            }
+            
+            result.put("success", true);
+            result.put("mailboxHost", mailboxHost);
+            result.put("mailboxUser", mailboxUser);
+            result.put("mailboxFolder", mailboxFolder);
+            result.put("messageCount", messageCount);
+            result.put("totalSize", totalSize);
+            result.put("biggestEmailSize", biggestSize);
+            result.put("smallestEmailSize", smallestSize);
+            result.put("oldestDate", oldestDate != null ? oldestDate.toString() : null);
+            result.put("newestDate", newestDate != null ? newestDate.toString() : null);
+            
+        } catch (Exception e) {
+            logger.severe("Failed to get mailbox stats: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        } finally {
+            // Always close the folder
+            if (folder != null) {
+                try {
+                    folder.close(false);
                 } catch (Exception e) {
                     logger.warning("Error closing folder: " + e.getMessage());
                 }

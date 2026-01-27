@@ -355,23 +355,26 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/close \
 **Request Body:**
 ```json
 {
-  "mailboxIdentifier": "user@gmail.com@imap.gmail.com",
-  "folder": "INBOX"
+  "mailboxHost": "imap.gmail.com",
+  "mailboxUser": "user@gmail.com",
+  "mailboxFolder": "INBOX"
 }
 ```
 
 **Notes:** 
-- The `mailboxIdentifier` field is required and must be in format `username@host`
-- The `folder` field is optional and defaults to `INBOX` if not provided
+- `mailboxHost` is required - the IMAP server host
+- `mailboxUser` is required - the username/email
+- `mailboxFolder` is optional and defaults to `INBOX` if not provided
 - The connection must already be open/cached, otherwise an error is returned
 
 **Success Response (200 OK):**
 ```json
 {
   "success": true,
-  "folder": "INBOX",
-  "messageCount": 42,
-  "mailboxIdentifier": "user@gmail.com@imap.gmail.com"
+  "mailboxHost": "imap.gmail.com",
+  "mailboxUser": "user@gmail.com",
+  "mailboxFolder": "INBOX",
+  "messageCount": 42
 }
 ```
 
@@ -398,12 +401,61 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/open \
 curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxCount \
   -H "Content-Type: application/json" \
   -d '{
-    "mailboxIdentifier": "user@gmail.com@imap.gmail.com",
-    "folder": "INBOX"
+    "mailboxHost": "imap.gmail.com",
+    "mailboxUser": "user@gmail.com",
+    "mailboxFolder": "INBOX"
   }'
 ```
 
-#### 5. IMAPS Connection Cache Status
+#### 5. Get Mailbox Statistics
+
+**Endpoint:** `POST /api/imap/mailboxStats`
+
+**Description:** Returns detailed statistics for emails in a specified folder, including message count, dates, sizes, and total size. **Requires an existing cached connection** - use `/api/imap/open` first to establish the connection.
+
+**Request Body:**
+```json
+{
+  "mailboxHost": "imap.gmail.com",
+  "mailboxUser": "user@gmail.com",
+  "mailboxFolder": "INBOX"
+}
+```
+
+**Notes:** 
+- `mailboxHost` is required - the IMAP server host
+- `mailboxUser` is required - the username/email
+- `mailboxFolder` is optional and defaults to `INBOX` if not provided
+- The connection must already be open/cached, otherwise an error is returned
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "mailboxHost": "imap.gmail.com",
+  "mailboxUser": "user@gmail.com",
+  "mailboxFolder": "INBOX",
+  "messageCount": 42,
+  "totalSize": 10485760,
+  "biggestEmailSize": 5242880,
+  "smallestEmailSize": 1024,
+  "oldestDate": "Mon Jan 01 10:00:00 UTC 2026",
+  "newestDate": "Mon Jan 27 12:00:00 UTC 2026"
+}
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxStats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailboxHost": "imap.gmail.com",
+    "mailboxUser": "user@gmail.com",
+    "mailboxFolder": "INBOX"
+  }'
+```
+
+#### 6. IMAPS Connection Cache Status
 
 **Endpoint:** `GET /api/imap/status`
 
