@@ -196,15 +196,16 @@ public class ImapConnectionService {
             }
             
             // Parse username@host format
-            String[] parts = mailboxIdentifier.split("@", 2);
-            if (parts.length != 2) {
+            // Use lastIndexOf to handle usernames with @ symbols (e.g., user@domain@host)
+            int lastAtIndex = mailboxIdentifier.lastIndexOf('@');
+            if (lastAtIndex == -1) {
                 result.put("success", false);
                 result.put("error", "Invalid mailbox identifier format. Expected: username@host");
                 return result;
             }
             
-            String username = parts[0];
-            String host = parts[1];
+            String username = mailboxIdentifier.substring(0, lastAtIndex);
+            String host = mailboxIdentifier.substring(lastAtIndex + 1);
             
             if (username.isEmpty() || host.isEmpty()) {
                 result.put("success", false);
@@ -220,15 +221,9 @@ public class ImapConnectionService {
             // Get existing cached connection (do NOT create new one)
             ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(host, username);
             
-            if (connectionInfo == null) {
+            if (connectionInfo == null || !connectionInfo.isConnected()) {
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/imap/open to establish a connection first");
-                return result;
-            }
-            
-            if (!connectionInfo.isConnected()) {
-                result.put("success", false);
-                result.put("error", "Connection is not active. Use /api/imap/open to establish a connection");
                 return result;
             }
             
