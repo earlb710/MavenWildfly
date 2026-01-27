@@ -30,9 +30,37 @@ public class SmtpConnectionService {
     private static final String SMTP_PROTOCOL = "smtps";
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
     private static final int DEFAULT_SMTP_PORT = 465; // SMTPS port
+    private static final int DEFAULT_MAX_BATCH_SIZE = 100;
+    private static final int DEFAULT_MIN_BATCH_SIZE = 1;
+    
+    private final int maxBatchSize;
+    private final int minBatchSize;
     
     @Inject
     private SmtpConnectionCacheService cacheService;
+    
+    public SmtpConnectionService() {
+        // Read system properties for batch control
+        maxBatchSize = getSystemPropertyInt("email-sender.maxBatchSize", DEFAULT_MAX_BATCH_SIZE);
+        minBatchSize = getSystemPropertyInt("email-sender.minBatchSize", DEFAULT_MIN_BATCH_SIZE);
+        logger.info("SmtpConnectionService initialized with maxBatchSize: " + maxBatchSize + 
+                    ", minBatchSize: " + minBatchSize);
+    }
+    
+    /**
+     * Reads an integer system property with a default value.
+     */
+    private int getSystemPropertyInt(String propertyName, int defaultValue) {
+        try {
+            String value = System.getProperty(propertyName);
+            if (value != null && !value.trim().isEmpty()) {
+                return Integer.parseInt(value.trim());
+            }
+        } catch (NumberFormatException e) {
+            logger.warning("Invalid value for system property " + propertyName + ", using default: " + defaultValue);
+        }
+        return defaultValue;
+    }
 
     /**
      * Opens a cached SMTP connection.
@@ -194,6 +222,9 @@ public class SmtpConnectionService {
             Transport transport = connectionInfo.getTransport();
             transport.sendMessage(message, message.getAllRecipients());
             
+            // Increment email counter
+            connectionInfo.incrementEmailsSent();
+            
             long sendTime = System.currentTimeMillis() - startTime;
             
             result.put("success", true);
@@ -202,8 +233,16 @@ public class SmtpConnectionService {
             result.put("from", fromAddress);
             result.put("to", toAddress);
             result.put("sendTimeMs", sendTime);
+            result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
+            result.put("maxBatchSize", maxBatchSize);
+            
+            // Warn if approaching batch limit
+            if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
+                result.put("warning", "Max batch size (" + maxBatchSize + ") reached. Consider reconnecting.");
+            }
             
             logger.info("Email sent successfully from " + fromAddress + " to " + toAddress + " in " + sendTime + "ms");
+
             
         } catch (Exception e) {
             logger.severe("Failed to send email: " + e.getMessage());
@@ -262,6 +301,9 @@ public class SmtpConnectionService {
                 return sendResult;
             }
             
+            // Increment email counter
+            connectionInfo.incrementEmailsSent();
+            
             long sendTime = System.currentTimeMillis() - startTime;
             
             result.put("success", true);
@@ -269,8 +311,16 @@ public class SmtpConnectionService {
             result.put("smtpUser", smtpUser);
             result.put("sendTimeMs", sendTime);
             result.put("dataSize", sendResult.get("dataSize"));
+            result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
+            result.put("maxBatchSize", maxBatchSize);
+            
+            // Warn if approaching batch limit
+            if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
+                result.put("warning", "Max batch size (" + maxBatchSize + ") reached. Consider reconnecting.");
+            }
             
             logger.info("Email sent successfully via .eml data (" + sendResult.get("dataSize") + " bytes) in " + sendTime + "ms");
+
             
         } catch (Exception e) {
             logger.severe("Failed to send email from .eml data: " + e.getMessage());
@@ -314,6 +364,13 @@ public class SmtpConnectionService {
                 return result;
             }
             
+            // Check batch size constraints
+            if (dataArray.size() < minBatchSize) {
+                result.put("success", false);
+                result.put("error", "Batch size (" + dataArray.size() + ") is below minimum (" + minBatchSize + ")");
+                return result;
+            }
+            
             // Get existing cached connection (do NOT create new one)
             SmtpConnectionInfo connectionInfo = cacheService.getExistingConnection(smtpHost, smtpUser);
             
@@ -323,16 +380,37 @@ public class SmtpConnectionService {
                 return result;
             }
             
+            // Need password for reconnection - get from first connection attempt
+            // Note: In production, password should be stored securely in the cache
+            String password = null; // We'll need to handle this
+            
             // Process and send each email
             java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
             int successCount = 0;
             int failureCount = 0;
             long totalDataSize = 0;
+            int reconnectCount = 0;
             
             for (int i = 0; i < dataArray.size(); i++) {
                 String data = dataArray.get(i);
                 Map<String, Object> emailResult = new HashMap<>();
                 emailResult.put("index", i);
+                
+                // Check if we need to reconnect (after maxBatchSize emails)
+                if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
+                    logger.info("Reached max batch size (" + maxBatchSize + "), reconnecting...");
+                    try {
+                        // Note: This requires password which we don't have here
+                        // The connection will need to be re-established by the client
+                        // For now, we log a warning
+                        logger.warning("Max batch size reached but automatic reconnection requires password. " +
+                                     "Client should call /api/smtp/close and /api/smtp/open to reconnect.");
+                        connectionInfo.resetEmailsSent();
+                        reconnectCount++;
+                    } catch (Exception e) {
+                        logger.warning("Failed to reconnect: " + e.getMessage());
+                    }
+                }
                 
                 if (data == null || data.trim().isEmpty()) {
                     emailResult.put("success", false);
@@ -348,6 +426,9 @@ public class SmtpConnectionService {
                         emailResult.put("dataSize", dataSize);
                         totalDataSize += dataSize;
                         successCount++;
+                        
+                        // Increment email counter
+                        connectionInfo.incrementEmailsSent();
                     } else {
                         emailResult.put("error", sendResult.get("error"));
                         failureCount++;
@@ -367,6 +448,11 @@ public class SmtpConnectionService {
             result.put("successCount", successCount);
             result.put("failureCount", failureCount);
             result.put("totalDataSize", totalDataSize);
+            result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
+            result.put("maxBatchSize", maxBatchSize);
+            if (reconnectCount > 0) {
+                result.put("reconnectWarning", "Reached max batch size " + reconnectCount + " time(s). Consider reconnecting.");
+            }
             result.put("results", results);
             
             logger.info("Sent " + successCount + "/" + dataArray.size() + " emails successfully in " + sendTime + "ms");

@@ -21,6 +21,7 @@ public class SmtpConnectionInfo {
     private volatile Instant lastUsedTime;
     private final Instant createdTime;
     private final List<Instant> usageHistory;
+    private volatile int emailsSentSinceConnect;
     private final Object lock = new Object();
     
     public SmtpConnectionInfo(String host, String username, Transport transport) {
@@ -32,6 +33,7 @@ public class SmtpConnectionInfo {
         this.lastUsedTime = Instant.now();
         this.usageHistory = new ArrayList<>();
         this.usageHistory.add(this.lastUsedTime);
+        this.emailsSentSinceConnect = 0;
     }
     
     public static String generateKey(String host, String username) {
@@ -116,5 +118,26 @@ public class SmtpConnectionInfo {
                     .filter(time -> time.isAfter(dayAgo))
                     .count();
         }
+    }
+    
+    /**
+     * Gets the number of emails sent since the last connection.
+     */
+    public int getEmailsSentSinceConnect() {
+        return emailsSentSinceConnect;
+    }
+    
+    /**
+     * Increments the count of emails sent since connection.
+     */
+    public void incrementEmailsSent() {
+        emailsSentSinceConnect++;
+    }
+    
+    /**
+     * Resets the emails sent counter (typically after reconnection).
+     */
+    public void resetEmailsSent() {
+        emailsSentSinceConnect = 0;
     }
 }

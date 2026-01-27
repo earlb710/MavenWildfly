@@ -834,12 +834,92 @@ curl http://localhost:8080/comms_processor/api/smtp/status
 ```
 
 **Connection Cache Behavior:**
-- **Maximum connections**: 50 (default, configurable)
+- **Maximum connections**: 50 (default, configurable via `email-sender.maxConnections` system property)
 - **Idle timeout**: 5 minutes - connections not used for 5 minutes are automatically closed
 - **Cleanup schedule**: Runs every minute to close idle connections
 - **Connection reuse**: Existing connections are reused when the same host/username is requested
 - **Eviction policy**: When cache is full, the least recently used connection is closed
 - **Statistics tracking**: Usage count and last access time for each connection tracked for the last 24 hours
+
+## System Properties
+
+The following system properties can be configured to control email sending behavior:
+
+### email-sender.maxBatchSize
+- **Description**: Maximum number of emails that can be sent before requiring a reconnection
+- **Default**: 100
+- **Purpose**: Some SMTP servers block connections after sending too many emails. This setting helps prevent that by tracking emails sent since the last connection.
+- **Usage**: When the limit is reached, a warning is included in the response suggesting reconnection.
+- **Example**: `-Demail-sender.maxBatchSize=50`
+
+### email-sender.minBatchSize
+- **Description**: Minimum number of emails required for batch sending
+- **Default**: 1
+- **Purpose**: Enforces a minimum batch size when sending multiple emails
+- **Example**: `-Demail-sender.minBatchSize=10`
+
+### email-sender.maxConnections
+- **Description**: Maximum number of concurrent SMTP connections to maintain in the cache (per host/user combination)
+- **Default**: 50
+- **Purpose**: Limits memory usage and prevents resource exhaustion
+- **Example**: `-Demail-sender.maxConnections=100`
+
+### email-sender.maxPoolSize
+- **Description**: Maximum size of the connection pool
+- **Default**: 100
+- **Purpose**: Controls the overall pool size for connection management
+- **Example**: `-Demail-sender.maxPoolSize=200`
+
+### Setting System Properties
+
+System properties can be set when starting WildFly:
+
+```bash
+./standalone.sh -Demail-sender.maxBatchSize=50 -Demail-sender.maxConnections=100
+```
+
+Or added to `standalone.xml`:
+
+```xml
+<system-properties>
+    <property name="email-sender.maxBatchSize" value="50"/>
+    <property name="email-sender.minBatchSize" value="1"/>
+    <property name="email-sender.maxConnections" value="100"/>
+    <property name="email-sender.maxPoolSize" value="200"/>
+</system-properties>
+```
+
+### Email Sending Response Fields
+
+When sending emails, the response now includes:
+- `emailsSentSinceConnect`: Number of emails sent since the connection was established
+- `maxBatchSize`: The configured maximum batch size
+- `warning`: (if applicable) Warning message when max batch size is reached
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "sendTimeMs": 920,
+  "dataSize": 4096,
+  "emailsSentSinceConnect": 45,
+  "maxBatchSize": 100
+}
+```
+
+When the limit is reached:
+```json
+{
+  "success": true,
+  "emailsSentSinceConnect": 100,
+  "maxBatchSize": 100,
+  "warning": "Max batch size (100) reached. Consider reconnecting."
+}
+```
+
+To reconnect after reaching the limit, call `/api/smtp/close` followed by `/api/smtp/open` with the same credentials.
 
 ## Testing
 

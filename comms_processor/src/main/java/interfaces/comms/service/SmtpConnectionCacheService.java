@@ -26,14 +26,36 @@ public class SmtpConnectionCacheService {
     private static final Logger logger = Logger.getLogger(SmtpConnectionCacheService.class.getName());
     
     private static final int DEFAULT_MAX_CONNECTIONS = 50;
+    private static final int DEFAULT_MAX_POOL_SIZE = 100;
     private static final long IDLE_TIMEOUT_SECONDS = 300; // 5 minutes
     
     private final Map<String, SmtpConnectionInfo> connectionCache = new ConcurrentHashMap<>();
     private int maxConnections = DEFAULT_MAX_CONNECTIONS;
+    private int maxPoolSize = DEFAULT_MAX_POOL_SIZE;
     
     @PostConstruct
     public void init() {
-        logger.info("SmtpConnectionCacheService initialized with max connections: " + maxConnections);
+        // Read system properties
+        maxConnections = getSystemPropertyInt("email-sender.maxConnections", DEFAULT_MAX_CONNECTIONS);
+        maxPoolSize = getSystemPropertyInt("email-sender.maxPoolSize", DEFAULT_MAX_POOL_SIZE);
+        
+        logger.info("SmtpConnectionCacheService initialized with maxConnections: " + maxConnections + 
+                    ", maxPoolSize: " + maxPoolSize);
+    }
+    
+    /**
+     * Reads an integer system property with a default value.
+     */
+    private int getSystemPropertyInt(String propertyName, int defaultValue) {
+        try {
+            String value = System.getProperty(propertyName);
+            if (value != null && !value.trim().isEmpty()) {
+                return Integer.parseInt(value.trim());
+            }
+        } catch (NumberFormatException e) {
+            logger.warning("Invalid value for system property " + propertyName + ", using default: " + defaultValue);
+        }
+        return defaultValue;
     }
     
     @PreDestroy
@@ -243,5 +265,38 @@ public class SmtpConnectionCacheService {
      */
     public int getMaxConnections() {
         return maxConnections;
+    }
+    
+    /**
+     * Reconnects an existing SMTP connection.
+     * Closes the existing connection and creates a new one.
+     * 
+     * @param host SMTP server host
+     * @param username Username for authentication
+     * @param password Password for authentication
+     * @param props Connection properties
+     * @return SmtpConnectionInfo object containing the new connection
+     * @throws Exception if reconnection fails
+     */
+    public SmtpConnectionInfo reconnect(String host, String username, String password, Properties props) throws Exception {
+        String key = SmtpConnectionInfo.generateKey(host, username);
+        
+        // Close existing connection
+        SmtpConnectionInfo oldInfo = connectionCache.remove(key);
+        if (oldInfo != null) {
+            oldInfo.close();
+            logger.info("Closed existing SMTP connection for reconnection: " + key);
+        }
+        
+        // Create new connection
+        Session session = Session.getInstance(props, null);
+        Transport transport = session.getTransport("smtps");
+        transport.connect(host, username, password);
+        
+        SmtpConnectionInfo newInfo = new SmtpConnectionInfo(host, username, transport);
+        connectionCache.put(key, newInfo);
+        
+        logger.info("Reconnected SMTP connection: " + key + " (total: " + connectionCache.size() + ")");
+        return newInfo;
     }
 }
