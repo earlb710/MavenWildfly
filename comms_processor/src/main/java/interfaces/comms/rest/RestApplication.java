@@ -1,6 +1,7 @@
 package interfaces.comms.rest;
 
 import interfaces.comms.rest.StatusResource;
+import interfaces.comms.rest.StatusHtmlResource;
 import interfaces.comms.rest.ImapConnectionResource;
 import interfaces.comms.rest.SmtpConnectionResource;
 
@@ -20,6 +21,7 @@ public class RestApplication extends Application {
     public Set<Class<?>> getClasses() {
         Set<Class<?>> resources = new HashSet<>();
         resources.add(StatusResource.class);
+        resources.add(StatusHtmlResource.class);
         resources.add(ImapConnectionResource.class);
         resources.add(SmtpConnectionResource.class);
         return resources;
