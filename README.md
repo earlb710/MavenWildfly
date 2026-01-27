@@ -128,6 +128,89 @@ The application provides REST API endpoints for monitoring and status checking:
 
 Base URL: `http://localhost:8080/comms_processor/api/status`
 
+#### 0. Main API Status Endpoint (NEW)
+
+**Endpoint:** `GET /api/status`
+
+**Description:** Returns a comprehensive overview of all available API endpoints and current system property values. This is the main entry point to discover all available APIs and their configurations.
+
+**Response Example:**
+```json
+{
+  "status": "ok",
+  "timestamp": 1706012345678,
+  "applicationName": "Communications Processor",
+  "version": "1.0.0-SNAPSHOT",
+  "totalEndpoints": 17,
+  "availableEndpoints": [
+    {
+      "path": "/api/status/ping",
+      "method": "GET",
+      "description": "Simple ping endpoint to verify service availability"
+    },
+    {
+      "path": "/api/status/serverStatus",
+      "method": "GET",
+      "description": "Returns detailed information about all services running on WildFly"
+    },
+    {
+      "path": "/api/imap/test",
+      "method": "POST",
+      "description": "Tests IMAPS connection with provided credentials"
+    },
+    {
+      "path": "/api/smtp/send",
+      "method": "POST",
+      "description": "Sends email(s) in .eml format using a cached SMTP connection"
+    }
+  ],
+  "properties": {
+    "postgresql": {
+      "url": "jdbc***:5432/comms_db",
+      "username": "comm***user",
+      "driver": "org.postgresql.Driver"
+    },
+    "oracle": {
+      "url": "jdbc***:1521:ORCL",
+      "username": "comm***user",
+      "driver": "oracle.jdbc.OracleDriver"
+    },
+    "connectionPool": {
+      "min": "5",
+      "max": "20"
+    },
+    "emailSender": {
+      "maxBatchSize": "100",
+      "minBatchSize": "1",
+      "maxConnections": "50",
+      "maxPoolSize": "100"
+    },
+    "emailReader": {
+      "maxBatchSize": "100",
+      "minBatchSize": "1",
+      "maxConnections": "50",
+      "maxPoolSize": "100"
+    },
+    "java": {
+      "version": "11.0.20",
+      "vendor": "Oracle Corporation",
+      "home": "/usr/lib/jvm/java-11-openjdk"
+    }
+  }
+}
+```
+
+**Usage:**
+```bash
+curl http://localhost:8080/comms_processor/api/status
+```
+
+**Key Features:**
+- **API Discovery**: Lists all available endpoints with their HTTP methods and descriptions
+- **Property Values**: Shows current configuration values from database.properties and system properties
+- **Security**: Sensitive values (URLs, usernames) are partially masked for security
+- **Centralized**: Single endpoint to understand the entire API surface
+
 #### 1. Ping Endpoint
 
 **Endpoint:** `GET /api/status/ping`
