@@ -66,6 +66,11 @@ public class StatusHtmlResource {
             html.append("        .endpoint-method { display: inline-block; background-color: #28a745; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em; margin-right: 10px; }\n");
             html.append("        .endpoint-method.post { background-color: #ffc107; color: #000; }\n");
             html.append("        .endpoint-desc { color: #666; font-size: 0.9em; margin-top: 5px; }\n");
+            html.append("        .expand-btn { display: inline-block; margin-left: 10px; padding: 4px 10px; background-color: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; }\n");
+            html.append("        .expand-btn:hover { background-color: #5a6268; }\n");
+            html.append("        .json-example { display: none; margin-top: 10px; padding: 10px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.9em; overflow-x: auto; }\n");
+            html.append("        .json-example.show { display: block; }\n");
+            html.append("        .json-example pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }\n");
             html.append("        .property-section { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px; }\n");
             html.append("        .property-key { font-weight: bold; color: #495057; }\n");
             html.append("        .property-value { color: #6c757d; }\n");
@@ -127,31 +132,78 @@ public class StatusHtmlResource {
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/imap/test</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-imap-test')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Tests IMAPS connection with provided credentials</div>\n");
+            html.append("            <div id=\"json-imap-test\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"host\": \"imap.example.com\",\n");
+            html.append("  \"port\": 993,\n");
+            html.append("  \"username\": \"user@example.com\",\n");
+            html.append("  \"password\": \"your-password\",\n");
+            html.append("  \"protocol\": \"imaps\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/imap/open</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-imap-open')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Opens and caches an IMAPS connection</div>\n");
+            html.append("            <div id=\"json-imap-open\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\",\n");
+            html.append("  \"host\": \"imap.example.com\",\n");
+            html.append("  \"port\": 993,\n");
+            html.append("  \"username\": \"user@example.com\",\n");
+            html.append("  \"password\": \"your-password\",\n");
+            html.append("  \"protocol\": \"imaps\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/imap/close</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-imap-close')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Closes a cached IMAPS connection</div>\n");
+            html.append("            <div id=\"json-imap-close\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/imap/mailboxCount</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-imap-count')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Returns the number of emails in a specified folder</div>\n");
+            html.append("            <div id=\"json-imap-count\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\",\n");
+            html.append("  \"folder\": \"INBOX\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/imap/mailboxStats</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-imap-stats')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Returns detailed statistics for emails in a folder</div>\n");
+            html.append("            <div id=\"json-imap-stats\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\",\n");
+            html.append("  \"folder\": \"INBOX\",\n");
+            html.append("  \"includeUnread\": true\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
@@ -164,25 +216,63 @@ public class StatusHtmlResource {
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/smtp/open</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-smtp-open')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Opens and caches an SMTP connection</div>\n");
+            html.append("            <div id=\"json-smtp-open\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\",\n");
+            html.append("  \"host\": \"smtp.example.com\",\n");
+            html.append("  \"port\": 587,\n");
+            html.append("  \"username\": \"user@example.com\",\n");
+            html.append("  \"password\": \"your-password\",\n");
+            html.append("  \"useTLS\": true\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/smtp/close</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-smtp-close')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Closes a cached SMTP connection</div>\n");
+            html.append("            <div id=\"json-smtp-close\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/smtp/sendTextMessage</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-smtp-text')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Sends a simple text email using a cached SMTP connection</div>\n");
+            html.append("            <div id=\"json-smtp-text\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\",\n");
+            html.append("  \"from\": \"sender@example.com\",\n");
+            html.append("  \"to\": [\"recipient@example.com\"],\n");
+            html.append("  \"subject\": \"Email Subject\",\n");
+            html.append("  \"body\": \"Email body content\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
             html.append("            <span class=\"endpoint-path\">/api/smtp/send</span>\n");
+            html.append("            <button class=\"expand-btn\" onclick=\"toggleJson('json-smtp-send')\">Show JSON</button>\n");
             html.append("            <div class=\"endpoint-desc\">Sends email(s) in .eml format using a cached SMTP connection</div>\n");
+            html.append("            <div id=\"json-smtp-send\" class=\"json-example\">\n");
+            html.append("                <strong>Request JSON:</strong>\n");
+            html.append("                <pre>{\n");
+            html.append("  \"sessionId\": \"unique-session-id\",\n");
+            html.append("  \"emlContent\": \"Base64 encoded .eml file content\"\n");
+            html.append("}</pre>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <div class=\"endpoint-card\">\n");
@@ -347,6 +437,21 @@ public class StatusHtmlResource {
             html.append("        </table>\n");
             
             html.append("    </div>\n");
+            
+            // Add JavaScript for expand/collapse functionality
+            html.append("    <script>\n");
+            html.append("        function toggleJson(id) {\n");
+            html.append("            var element = document.getElementById(id);\n");
+            html.append("            var button = event.target;\n");
+            html.append("            if (element.classList.contains('show')) {\n");
+            html.append("                element.classList.remove('show');\n");
+            html.append("                button.textContent = 'Show JSON';\n");
+            html.append("            } else {\n");
+            html.append("                element.classList.add('show');\n");
+            html.append("                button.textContent = 'Hide JSON';\n");
+            html.append("            }\n");
+            html.append("        }\n");
+            html.append("    </script>\n");
             html.append("</body>\n");
             html.append("</html>");
             
