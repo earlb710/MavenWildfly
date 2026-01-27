@@ -50,6 +50,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- JavaMail API for IMAPS support -->
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+
         <!-- JUnit for testing -->
         <dependency>
             <groupId>junit</groupId>
