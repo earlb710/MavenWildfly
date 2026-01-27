@@ -489,6 +489,16 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxStats \
 curl http://localhost:8080/comms_processor/api/imap/status
 ```
 
+**Connection Cache Behavior:**
+- **Maximum connections**: 50 (default, configurable via `email-reader.maxConnections` system property)
+- **Maximum pool size**: 100 (default, configurable via `email-reader.maxPoolSize` system property)
+- **Idle timeout**: 5 minutes - connections not used for 5 minutes are automatically closed
+- **Cleanup schedule**: Runs every minute to close idle connections
+- **Connection reuse**: Existing connections are reused when the same host/username is requested
+- **Eviction policy**: When cache is full, the least recently used connection is closed
+- **Statistics tracking**: Usage count and last access time for each connection tracked for the last 24 hours
+- **Batch processing**: Configurable via `email-reader.minBatchSize` (default: 1) and `email-reader.maxBatchSize` (default: 100)
+
 ### SMTP Connection Endpoints
 
 Base URL: `http://localhost:8080/comms_processor/api/smtp`
@@ -892,12 +902,36 @@ The following system properties can be configured to control email sending behav
 - **Purpose**: Controls the overall pool size for connection management
 - **Example**: `-Demail-sender.maxPoolSize=200`
 
+### email-reader.maxConnections
+- **Description**: Maximum number of concurrent IMAP connections to maintain in the cache (per host/user combination)
+- **Default**: 50
+- **Purpose**: Limits memory usage and prevents resource exhaustion for IMAP connections
+- **Example**: `-Demail-reader.maxConnections=100`
+
+### email-reader.maxPoolSize
+- **Description**: Maximum size of the IMAP connection pool
+- **Default**: 100
+- **Purpose**: Controls the overall pool size for IMAP connection management
+- **Example**: `-Demail-reader.maxPoolSize=200`
+
+### email-reader.minBatchSize
+- **Description**: Minimum number of messages required for batch processing
+- **Default**: 1
+- **Purpose**: Enforces a minimum batch size when processing multiple emails
+- **Example**: `-Demail-reader.minBatchSize=10`
+
+### email-reader.maxBatchSize
+- **Description**: Maximum number of messages to process in a single batch
+- **Default**: 100
+- **Purpose**: Controls batch processing size for IMAP operations like mailboxStats
+- **Example**: `-Demail-reader.maxBatchSize=200`
+
 ### Setting System Properties
 
 System properties can be set when starting WildFly:
 
 ```bash
-./standalone.sh -Demail-sender.maxBatchSize=50 -Demail-sender.maxConnections=100
+./standalone.sh -Demail-sender.maxBatchSize=50 -Demail-sender.maxConnections=100 -Demail-reader.maxConnections=75
 ```
 
 Or added to `standalone.xml`:
@@ -908,6 +942,10 @@ Or added to `standalone.xml`:
     <property name="email-sender.minBatchSize" value="1"/>
     <property name="email-sender.maxConnections" value="100"/>
     <property name="email-sender.maxPoolSize" value="200"/>
+    <property name="email-reader.maxConnections" value="75"/>
+    <property name="email-reader.maxPoolSize" value="150"/>
+    <property name="email-reader.minBatchSize" value="1"/>
+    <property name="email-reader.maxBatchSize" value="200"/>
 </system-properties>
 ```
 

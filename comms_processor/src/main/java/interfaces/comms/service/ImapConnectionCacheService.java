@@ -26,14 +26,44 @@ public class ImapConnectionCacheService {
     private static final Logger logger = Logger.getLogger(ImapConnectionCacheService.class.getName());
     
     private static final int DEFAULT_MAX_CONNECTIONS = 50;
+    private static final int DEFAULT_MAX_POOL_SIZE = 100;
+    private static final int DEFAULT_MIN_BATCH_SIZE = 1;
+    private static final int DEFAULT_MAX_BATCH_SIZE = 100;
     private static final long IDLE_TIMEOUT_SECONDS = 300; // 5 minutes
     
     private final Map<String, ImapConnectionInfo> connectionCache = new ConcurrentHashMap<>();
     private int maxConnections = DEFAULT_MAX_CONNECTIONS;
+    private int maxPoolSize = DEFAULT_MAX_POOL_SIZE;
+    private int minBatchSize = DEFAULT_MIN_BATCH_SIZE;
+    private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
     
     @PostConstruct
     public void init() {
-        logger.info("ImapConnectionCacheService initialized with max connections: " + maxConnections);
+        // Read system properties
+        maxConnections = getSystemPropertyInt("email-reader.maxConnections", DEFAULT_MAX_CONNECTIONS);
+        maxPoolSize = getSystemPropertyInt("email-reader.maxPoolSize", DEFAULT_MAX_POOL_SIZE);
+        minBatchSize = getSystemPropertyInt("email-reader.minBatchSize", DEFAULT_MIN_BATCH_SIZE);
+        maxBatchSize = getSystemPropertyInt("email-reader.maxBatchSize", DEFAULT_MAX_BATCH_SIZE);
+        
+        logger.info("ImapConnectionCacheService initialized with maxConnections: " + maxConnections + 
+                    ", maxPoolSize: " + maxPoolSize + 
+                    ", minBatchSize: " + minBatchSize + 
+                    ", maxBatchSize: " + maxBatchSize);
+    }
+    
+    /**
+     * Reads an integer system property with a default value.
+     */
+    private int getSystemPropertyInt(String propertyName, int defaultValue) {
+        try {
+            String value = System.getProperty(propertyName);
+            if (value != null && !value.trim().isEmpty()) {
+                return Integer.parseInt(value.trim());
+            }
+        } catch (NumberFormatException e) {
+            logger.warning("Invalid value for system property " + propertyName + ", using default: " + defaultValue);
+        }
+        return defaultValue;
     }
     
     @PreDestroy
@@ -246,5 +276,42 @@ public class ImapConnectionCacheService {
      */
     public int getMaxConnections() {
         return maxConnections;
+    }
+    
+    /**
+     * Gets the maximum pool size.
+     * 
+     * @return Maximum pool size
+     */
+    public int getMaxPoolSize() {
+        return maxPoolSize;
+    }
+    
+    /**
+     * Sets the maximum pool size.
+     * 
+     * @param maxPoolSize Maximum pool size
+     */
+    public void setMaxPoolSize(int maxPoolSize) {
+        this.maxPoolSize = maxPoolSize;
+        logger.info("Max pool size set to: " + maxPoolSize);
+    }
+    
+    /**
+     * Gets the minimum batch size.
+     * 
+     * @return Minimum batch size
+     */
+    public int getMinBatchSize() {
+        return minBatchSize;
+    }
+    
+    /**
+     * Gets the maximum batch size.
+     * 
+     * @return Maximum batch size
+     */
+    public int getMaxBatchSize() {
+        return maxBatchSize;
     }
 }
