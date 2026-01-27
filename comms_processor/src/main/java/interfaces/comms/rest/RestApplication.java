@@ -1,7 +1,11 @@
 package interfaces.comms.rest;
 
-import javax.ws.rs.ApplicationPath;
-import javax.ws.rs.core.Application;
+import interfaces.comms.rest.StatusResource;
+
+import jakarta.ws.rs.ApplicationPath;
+import jakarta.ws.rs.core.Application;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * JAX-RS Application configuration class.
@@ -9,5 +13,11 @@ import javax.ws.rs.core.Application;
  */
 @ApplicationPath("/api")
 public class RestApplication extends Application {
-    // JAX-RS will automatically discover and register resource classes
+    
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> resources = new HashSet<>();
+        resources.add(StatusResource.class);
+        return resources;
+    }
 }
