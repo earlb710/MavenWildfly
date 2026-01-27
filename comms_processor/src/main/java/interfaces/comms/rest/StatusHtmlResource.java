@@ -198,75 +198,153 @@ public class StatusHtmlResource {
             Properties dbProps = loadProperties("/database.properties");
             if (dbProps != null && !dbProps.isEmpty()) {
                 html.append("        <h3>Database Configuration</h3>\n");
+                html.append("        <table>\n");
+                html.append("            <thead>\n");
+                html.append("                <tr>\n");
+                html.append("                    <th>Description</th>\n");
+                html.append("                    <th>Name</th>\n");
+                html.append("                    <th>Value</th>\n");
+                html.append("                </tr>\n");
+                html.append("            </thead>\n");
+                html.append("            <tbody>\n");
                 
                 // PostgreSQL
-                html.append("        <div class=\"property-section\">\n");
-                html.append("            <h4>PostgreSQL</h4>\n");
-                html.append("            <p><span class=\"property-key\">URL:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(maskSensitiveValue(dbProps.getProperty("postgresql.url")))).append("</span></p>\n");
-                html.append("            <p><span class=\"property-key\">Username:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(maskSensitiveValue(dbProps.getProperty("postgresql.username")))).append("</span></p>\n");
-                html.append("            <p><span class=\"property-key\">Driver:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(dbProps.getProperty("postgresql.driver"))).append("</span></p>\n");
-                html.append("        </div>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>PostgreSQL connection URL</td>\n");
+                html.append("                    <td>postgresql.url</td>\n");
+                html.append("                    <td>").append(escapeHtml(maskSensitiveValue(dbProps.getProperty("postgresql.url")))).append("</td>\n");
+                html.append("                </tr>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>PostgreSQL username</td>\n");
+                html.append("                    <td>postgresql.username</td>\n");
+                html.append("                    <td>").append(escapeHtml(maskSensitiveValue(dbProps.getProperty("postgresql.username")))).append("</td>\n");
+                html.append("                </tr>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>PostgreSQL driver class</td>\n");
+                html.append("                    <td>postgresql.driver</td>\n");
+                html.append("                    <td>").append(escapeHtml(dbProps.getProperty("postgresql.driver"))).append("</td>\n");
+                html.append("                </tr>\n");
                 
                 // Oracle
-                html.append("        <div class=\"property-section\">\n");
-                html.append("            <h4>Oracle</h4>\n");
-                html.append("            <p><span class=\"property-key\">URL:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(maskSensitiveValue(dbProps.getProperty("oracle.url")))).append("</span></p>\n");
-                html.append("            <p><span class=\"property-key\">Username:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(maskSensitiveValue(dbProps.getProperty("oracle.username")))).append("</span></p>\n");
-                html.append("            <p><span class=\"property-key\">Driver:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(dbProps.getProperty("oracle.driver"))).append("</span></p>\n");
-                html.append("        </div>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>Oracle connection URL</td>\n");
+                html.append("                    <td>oracle.url</td>\n");
+                html.append("                    <td>").append(escapeHtml(maskSensitiveValue(dbProps.getProperty("oracle.url")))).append("</td>\n");
+                html.append("                </tr>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>Oracle username</td>\n");
+                html.append("                    <td>oracle.username</td>\n");
+                html.append("                    <td>").append(escapeHtml(maskSensitiveValue(dbProps.getProperty("oracle.username")))).append("</td>\n");
+                html.append("                </tr>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>Oracle driver class</td>\n");
+                html.append("                    <td>oracle.driver</td>\n");
+                html.append("                    <td>").append(escapeHtml(dbProps.getProperty("oracle.driver"))).append("</td>\n");
+                html.append("                </tr>\n");
                 
                 // Connection Pool
-                html.append("        <div class=\"property-section\">\n");
-                html.append("            <h4>Connection Pool</h4>\n");
-                html.append("            <p><span class=\"property-key\">Min:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(dbProps.getProperty("connection.pool.min"))).append("</span></p>\n");
-                html.append("            <p><span class=\"property-key\">Max:</span> <span class=\"property-value\">")
-                    .append(escapeHtml(dbProps.getProperty("connection.pool.max"))).append("</span></p>\n");
-                html.append("        </div>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>Minimum connection pool size</td>\n");
+                html.append("                    <td>connection.pool.min</td>\n");
+                html.append("                    <td>").append(escapeHtml(dbProps.getProperty("connection.pool.min"))).append("</td>\n");
+                html.append("                </tr>\n");
+                html.append("                <tr>\n");
+                html.append("                    <td>Maximum connection pool size</td>\n");
+                html.append("                    <td>connection.pool.max</td>\n");
+                html.append("                    <td>").append(escapeHtml(dbProps.getProperty("connection.pool.max"))).append("</td>\n");
+                html.append("                </tr>\n");
+                
+                html.append("            </tbody>\n");
+                html.append("        </table>\n");
             }
             
-            // Email Sender Properties
+            // Email Configuration
             html.append("        <h3>Email Configuration</h3>\n");
-            html.append("        <div class=\"property-section\">\n");
-            html.append("            <h4>Email Sender</h4>\n");
-            html.append("            <p><span class=\"property-key\">Max Batch Size:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-sender.maxBatchSize", "100")).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Min Batch Size:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-sender.minBatchSize", "1")).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Max Connections:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-sender.maxConnections", "50")).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Max Pool Size:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-sender.maxPoolSize", "100")).append("</span></p>\n");
-            html.append("        </div>\n");
+            html.append("        <table>\n");
+            html.append("            <thead>\n");
+            html.append("                <tr>\n");
+            html.append("                    <th>Description</th>\n");
+            html.append("                    <th>Name</th>\n");
+            html.append("                    <th>Value</th>\n");
+            html.append("                </tr>\n");
+            html.append("            </thead>\n");
+            html.append("            <tbody>\n");
             
-            html.append("        <div class=\"property-section\">\n");
-            html.append("            <h4>Email Reader</h4>\n");
-            html.append("            <p><span class=\"property-key\">Max Batch Size:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-reader.maxBatchSize", "100")).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Min Batch Size:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-reader.minBatchSize", "1")).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Max Connections:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-reader.maxConnections", "50")).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Max Pool Size:</span> <span class=\"property-value\">")
-                .append(System.getProperty("email-reader.maxPoolSize", "100")).append("</span></p>\n");
-            html.append("        </div>\n");
+            // Email Sender Properties
+            html.append("                <tr>\n");
+            html.append("                    <td>Email sender maximum batch size</td>\n");
+            html.append("                    <td>email-sender.maxBatchSize</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-sender.maxBatchSize", "100")).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Email sender minimum batch size</td>\n");
+            html.append("                    <td>email-sender.minBatchSize</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-sender.minBatchSize", "1")).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Email sender maximum connections</td>\n");
+            html.append("                    <td>email-sender.maxConnections</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-sender.maxConnections", "50")).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Email sender maximum pool size</td>\n");
+            html.append("                    <td>email-sender.maxPoolSize</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-sender.maxPoolSize", "100")).append("</td>\n");
+            html.append("                </tr>\n");
             
-            // Java Properties
-            html.append("        <div class=\"property-section\">\n");
-            html.append("            <h4>Java Environment</h4>\n");
-            html.append("            <p><span class=\"property-key\">Version:</span> <span class=\"property-value\">")
-                .append(escapeHtml(System.getProperty("java.version"))).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Vendor:</span> <span class=\"property-value\">")
-                .append(escapeHtml(System.getProperty("java.vendor"))).append("</span></p>\n");
-            html.append("            <p><span class=\"property-key\">Home:</span> <span class=\"property-value\">")
-                .append(escapeHtml(System.getProperty("java.home"))).append("</span></p>\n");
-            html.append("        </div>\n");
+            // Email Reader Properties
+            html.append("                <tr>\n");
+            html.append("                    <td>Email reader maximum batch size</td>\n");
+            html.append("                    <td>email-reader.maxBatchSize</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-reader.maxBatchSize", "100")).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Email reader minimum batch size</td>\n");
+            html.append("                    <td>email-reader.minBatchSize</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-reader.minBatchSize", "1")).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Email reader maximum connections</td>\n");
+            html.append("                    <td>email-reader.maxConnections</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-reader.maxConnections", "50")).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Email reader maximum pool size</td>\n");
+            html.append("                    <td>email-reader.maxPoolSize</td>\n");
+            html.append("                    <td>").append(System.getProperty("email-reader.maxPoolSize", "100")).append("</td>\n");
+            html.append("                </tr>\n");
+            
+            html.append("            </tbody>\n");
+            html.append("        </table>\n");
+            
+            // Java Environment
+            html.append("        <h3>Java Environment</h3>\n");
+            html.append("        <table>\n");
+            html.append("            <thead>\n");
+            html.append("                <tr>\n");
+            html.append("                    <th>Description</th>\n");
+            html.append("                    <th>Name</th>\n");
+            html.append("                    <th>Value</th>\n");
+            html.append("                </tr>\n");
+            html.append("            </thead>\n");
+            html.append("            <tbody>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Java version</td>\n");
+            html.append("                    <td>java.version</td>\n");
+            html.append("                    <td>").append(escapeHtml(System.getProperty("java.version"))).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Java vendor</td>\n");
+            html.append("                    <td>java.vendor</td>\n");
+            html.append("                    <td>").append(escapeHtml(System.getProperty("java.vendor"))).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("                <tr>\n");
+            html.append("                    <td>Java home directory</td>\n");
+            html.append("                    <td>java.home</td>\n");
+            html.append("                    <td>").append(escapeHtml(System.getProperty("java.home"))).append("</td>\n");
+            html.append("                </tr>\n");
+            html.append("            </tbody>\n");
+            html.append("        </table>\n");
             
             html.append("    </div>\n");
             html.append("</body>\n");
