@@ -18,6 +18,8 @@ public class SmtpConnectionInfo {
     private final String connectionKey;
     private final String host;
     private final String username;
+    // Note: Password stored for automatic reconnection. In production, consider using
+    // secure storage mechanisms like char arrays or encryption to protect credentials in memory.
     private final String password; // Stored for automatic reconnection
     private final int port;
     private final Transport transport;

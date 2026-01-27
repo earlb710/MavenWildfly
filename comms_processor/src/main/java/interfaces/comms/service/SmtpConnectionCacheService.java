@@ -78,8 +78,14 @@ public class SmtpConnectionCacheService {
     public SmtpConnectionInfo getOrCreateConnection(String host, String username, String password, Properties props) throws Exception {
         String key = SmtpConnectionInfo.generateKey(host, username);
         
-        // Extract port from properties
-        int port = Integer.parseInt(props.getProperty("mail.smtps.port", "465"));
+        // Extract port from properties with error handling
+        int port;
+        try {
+            port = Integer.parseInt(props.getProperty("mail.smtps.port", "465"));
+        } catch (NumberFormatException e) {
+            logger.warning("Invalid port number in properties, using default 465");
+            port = 465;
+        }
         
         // Try to get and update existing connection atomically
         SmtpConnectionInfo existingInfo = connectionCache.computeIfPresent(key, (k, info) -> {
@@ -284,8 +290,14 @@ public class SmtpConnectionCacheService {
     public SmtpConnectionInfo reconnect(String host, String username, String password, Properties props) throws Exception {
         String key = SmtpConnectionInfo.generateKey(host, username);
         
-        // Extract port from properties
-        int port = Integer.parseInt(props.getProperty("mail.smtps.port", "465"));
+        // Extract port from properties with error handling
+        int port;
+        try {
+            port = Integer.parseInt(props.getProperty("mail.smtps.port", "465"));
+        } catch (NumberFormatException e) {
+            logger.warning("Invalid port number in properties, using default 465");
+            port = 465;
+        }
         
         // Close existing connection
         SmtpConnectionInfo oldInfo = connectionCache.remove(key);
