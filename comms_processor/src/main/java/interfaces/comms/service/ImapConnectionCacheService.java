@@ -56,18 +56,21 @@ public class ImapConnectionCacheService {
     public ImapConnectionInfo getOrCreateConnection(String host, String username, String password, Properties props) throws Exception {
         String key = ImapConnectionInfo.generateKey(host, username);
         
-        // Check if we have a cached connection
-        ImapConnectionInfo cachedInfo = connectionCache.get(key);
-        if (cachedInfo != null && cachedInfo.isConnected()) {
-            cachedInfo.updateLastUsed();
-            logger.fine("Reusing cached connection for: " + key);
-            return cachedInfo;
-        }
+        // Try to get and update existing connection atomically
+        ImapConnectionInfo existingInfo = connectionCache.computeIfPresent(key, (k, info) -> {
+            if (info.isConnected()) {
+                info.updateLastUsed();
+                return info;
+            } else {
+                // Connection is stale, will be replaced
+                info.close();
+                return null; // Remove from cache
+            }
+        });
         
-        // Remove stale connection if exists
-        if (cachedInfo != null) {
-            cachedInfo.close();
-            connectionCache.remove(key);
+        if (existingInfo != null) {
+            logger.fine("Reusing cached connection for: " + key);
+            return existingInfo;
         }
         
         // Check if we need to evict connections
@@ -133,23 +136,28 @@ public class ImapConnectionCacheService {
      */
     @Schedule(hour = "*", minute = "*", second = "0", persistent = false)
     public void cleanupIdleConnections() {
-        List<String> keysToRemove = new ArrayList<>();
+        int removedCount = 0;
         
-        for (Map.Entry<String, ImapConnectionInfo> entry : connectionCache.entrySet()) {
-            ImapConnectionInfo info = entry.getValue();
-            long idleTime = info.getIdleTimeSeconds();
+        // Use iterator for safe removal during iteration
+        for (String key : new ArrayList<>(connectionCache.keySet())) {
+            connectionCache.computeIfPresent(key, (k, info) -> {
+                long idleTime = info.getIdleTimeSeconds();
+                if (idleTime > IDLE_TIMEOUT_SECONDS) {
+                    logger.info("Closing idle connection: " + k + " (idle for " + idleTime + " seconds)");
+                    info.close();
+                    return null; // Remove from cache
+                }
+                return info; // Keep in cache
+            });
             
-            if (idleTime > IDLE_TIMEOUT_SECONDS) {
-                logger.info("Closing idle connection: " + entry.getKey() + " (idle for " + idleTime + " seconds)");
-                info.close();
-                keysToRemove.add(entry.getKey());
+            // Check if removed
+            if (!connectionCache.containsKey(key)) {
+                removedCount++;
             }
         }
         
-        keysToRemove.forEach(connectionCache::remove);
-        
-        if (!keysToRemove.isEmpty()) {
-            logger.info("Cleaned up " + keysToRemove.size() + " idle connections");
+        if (removedCount > 0) {
+            logger.info("Cleaned up " + removedCount + " idle connections");
         }
     }
     
