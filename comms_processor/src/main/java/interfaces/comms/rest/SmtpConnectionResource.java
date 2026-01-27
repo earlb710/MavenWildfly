@@ -107,7 +107,7 @@ public class SmtpConnectionResource {
     }
     
     /**
-     * Sends an email using a cached SMTP connection.
+     * Sends a text email using a cached SMTP connection.
      * Requires an existing cached connection (use /api/smtp/open first).
      * 
      * Request body example:
@@ -119,6 +119,55 @@ public class SmtpConnectionResource {
      *   "subject": "Test Email",
      *   "body": "This is a test email."
      * }
+     * 
+     * @param request Map containing email parameters
+     * @return Response with success status and send time
+     */
+    @POST
+    @Path("/sendTextMessage")
+    public Response sendTextMessage(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String smtpHost = request.get("smtpHost");
+        String smtpUser = request.get("smtpUser");
+        String fromAddress = request.get("fromAddress");
+        String toAddress = request.get("toAddress");
+        String subject = request.get("subject");
+        String body = request.get("body");
+        
+        Map<String, Object> result = smtpConnectionService.sendTextMessage(
+            smtpHost, smtpUser, fromAddress, toAddress, subject, body);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(result)
+                    .build();
+        }
+    }
+    
+    /**
+     * Sends an email in .eml format using a cached SMTP connection.
+     * Requires an existing cached connection (use /api/smtp/open first).
+     * 
+     * Request body example:
+     * {
+     *   "smtpHost": "smtp.gmail.com",
+     *   "smtpUser": "user@gmail.com",
+     *   "data": "base64-encoded-eml-data"
+     * }
+     * 
+     * The data field should contain base64 encoded .eml format email.
+     * Data can be optionally gzipped before base64 encoding.
      * 
      * @param request Map containing email parameters
      * @return Response with success status and send time
@@ -138,13 +187,9 @@ public class SmtpConnectionResource {
         
         String smtpHost = request.get("smtpHost");
         String smtpUser = request.get("smtpUser");
-        String fromAddress = request.get("fromAddress");
-        String toAddress = request.get("toAddress");
-        String subject = request.get("subject");
-        String body = request.get("body");
+        String data = request.get("data");
         
-        Map<String, Object> result = smtpConnectionService.sendEmail(
-            smtpHost, smtpUser, fromAddress, toAddress, subject, body);
+        Map<String, Object> result = smtpConnectionService.sendEmail(smtpHost, smtpUser, data);
         
         if ((Boolean) result.get("success")) {
             return Response.ok(result).build();

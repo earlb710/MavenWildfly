@@ -9,10 +9,14 @@ import jakarta.mail.internet.MimeMessage;
 
 import javax.ejb.Stateless;
 import javax.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Service to handle SMTP connections and email sending with TLS encryption.
@@ -118,7 +122,7 @@ public class SmtpConnectionService {
     }
     
     /**
-     * Sends an email using a cached SMTP connection.
+     * Sends a text email using a cached SMTP connection.
      * 
      * @param smtpHost The SMTP server host
      * @param smtpUser The SMTP username
@@ -128,7 +132,7 @@ public class SmtpConnectionService {
      * @param body Email body
      * @return Map containing success status
      */
-    public Map<String, Object> sendEmail(String smtpHost, String smtpUser, String fromAddress, 
+    public Map<String, Object> sendTextMessage(String smtpHost, String smtpUser, String fromAddress, 
                                          String toAddress, String subject, String body) {
         Map<String, Object> result = new HashMap<>();
         long startTime = System.currentTimeMillis();
@@ -203,6 +207,119 @@ public class SmtpConnectionService {
             
         } catch (Exception e) {
             logger.severe("Failed to send email: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Sends an email in .eml format using a cached SMTP connection.
+     * Accepts base64 encoded (optionally gzipped) .eml format data.
+     * 
+     * @param smtpHost The SMTP server host
+     * @param smtpUser The SMTP username
+     * @param data Base64 encoded .eml data (possibly gzipped)
+     * @return Map containing success status
+     */
+    public Map<String, Object> sendEmail(String smtpHost, String smtpUser, String data) {
+        Map<String, Object> result = new HashMap<>();
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            // Validate required fields
+            if (smtpHost == null || smtpHost.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "smtpHost is required");
+                return result;
+            }
+            
+            if (smtpUser == null || smtpUser.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "smtpUser is required");
+                return result;
+            }
+            
+            if (data == null || data.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "data is required");
+                return result;
+            }
+            
+            // Get existing cached connection (do NOT create new one)
+            SmtpConnectionInfo connectionInfo = cacheService.getExistingConnection(smtpHost, smtpUser);
+            
+            if (connectionInfo == null || !connectionInfo.isConnected()) {
+                result.put("success", false);
+                result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
+                return result;
+            }
+            
+            // Decode base64 data
+            byte[] decodedData;
+            try {
+                decodedData = Base64.getDecoder().decode(data);
+            } catch (IllegalArgumentException e) {
+                result.put("success", false);
+                result.put("error", "Invalid base64 encoding: " + e.getMessage());
+                return result;
+            }
+            
+            // Try to detect if data is gzipped (check magic number)
+            byte[] emlData;
+            if (decodedData.length >= 2 && decodedData[0] == (byte) 0x1f && decodedData[1] == (byte) 0x8b) {
+                // Data is gzipped, decompress it
+                logger.fine("Detected gzipped data, decompressing...");
+                try (ByteArrayInputStream bais = new ByteArrayInputStream(decodedData);
+                     GZIPInputStream gzis = new GZIPInputStream(bais);
+                     ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    
+                    byte[] buffer = new byte[4096];
+                    int len;
+                    while ((len = gzis.read(buffer)) > 0) {
+                        baos.write(buffer, 0, len);
+                    }
+                    emlData = baos.toByteArray();
+                } catch (Exception e) {
+                    result.put("success", false);
+                    result.put("error", "Failed to decompress gzipped data: " + e.getMessage());
+                    return result;
+                }
+            } else {
+                // Data is not gzipped, use as-is
+                emlData = decodedData;
+            }
+            
+            // Parse .eml data as MimeMessage
+            Properties props = getSmtpProperties(smtpHost, DEFAULT_SMTP_PORT);
+            Session session = Session.getInstance(props, null);
+            MimeMessage message;
+            
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(emlData)) {
+                message = new MimeMessage(session, bais);
+            } catch (Exception e) {
+                result.put("success", false);
+                result.put("error", "Failed to parse .eml data: " + e.getMessage());
+                return result;
+            }
+            
+            // Send message using cached transport
+            Transport transport = connectionInfo.getTransport();
+            transport.sendMessage(message, message.getAllRecipients());
+            
+            long sendTime = System.currentTimeMillis() - startTime;
+            
+            result.put("success", true);
+            result.put("smtpHost", smtpHost);
+            result.put("smtpUser", smtpUser);
+            result.put("sendTimeMs", sendTime);
+            result.put("dataSize", emlData.length);
+            
+            logger.info("Email sent successfully via .eml data (" + emlData.length + " bytes) in " + sendTime + "ms");
+            
+        } catch (Exception e) {
+            logger.severe("Failed to send email from .eml data: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
         }

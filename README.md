@@ -569,11 +569,11 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/close \
   }'
 ```
 
-#### 3. Send Email
+#### 3. Send Text Email
 
-**Endpoint:** `POST /api/smtp/send`
+**Endpoint:** `POST /api/smtp/sendTextMessage`
 
-**Description:** Sends an email using a cached SMTP connection. **Requires an existing cached connection** - use `/api/smtp/open` first to establish the connection.
+**Description:** Sends a simple text email using a cached SMTP connection. **Requires an existing cached connection** - use `/api/smtp/open` first to establish the connection.
 
 **Request Body:**
 ```json
@@ -627,8 +627,8 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/open \
     "password": "app-password"
   }'
 
-# Then, send an email
-curl -X POST http://localhost:8080/comms_processor/api/smtp/send \
+# Then, send a text email
+curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
   -H "Content-Type: application/json" \
   -d '{
     "smtpHost": "smtp.gmail.com",
@@ -640,7 +640,72 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/send \
   }'
 ```
 
-#### 4. SMTP Connection Cache Status
+#### 4. Send Email (.eml format)
+
+**Endpoint:** `POST /api/smtp/send`
+
+**Description:** Sends an email in .eml format using a cached SMTP connection. Accepts base64 encoded (optionally gzipped) .eml format data. **Requires an existing cached connection** - use `/api/smtp/open` first to establish the connection.
+
+**Request Body:**
+```json
+{
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "data": "base64-encoded-eml-data"
+}
+```
+
+**Notes:**
+- `smtpHost` is required - the SMTP server host
+- `smtpUser` is required - the username/email used to open the connection
+- `data` is required - base64 encoded .eml format email
+- Data can be optionally gzipped before base64 encoding (automatically detected)
+- **Connection must already be open/cached** - Returns error if connection not found
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "sendTimeMs": 920,
+  "dataSize": 4096
+}
+```
+
+**Error Response (400 Bad Request) - Connection Not Open:**
+```json
+{
+  "success": false,
+  "error": "Connection not open. Use /api/smtp/open to establish a connection first"
+}
+```
+
+**Usage Example:**
+```bash
+# First, open a connection
+curl -X POST http://localhost:8080/comms_processor/api/smtp/open \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "smtp.gmail.com",
+    "username": "user@gmail.com",
+    "password": "app-password"
+  }'
+
+# Then, send an email from .eml file
+# First, encode the .eml file to base64
+EML_DATA=$(base64 -w 0 email.eml)
+
+curl -X POST http://localhost:8080/comms_processor/api/smtp/send \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"smtpHost\": \"smtp.gmail.com\",
+    \"smtpUser\": \"user@gmail.com\",
+    \"data\": \"$EML_DATA\"
+  }"
+```
+
+#### 5. SMTP Connection Cache Status
 
 **Endpoint:** `GET /api/smtp/status`
 
