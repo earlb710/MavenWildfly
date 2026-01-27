@@ -380,36 +380,23 @@ public class SmtpConnectionService {
                 return result;
             }
             
-            // Need password for reconnection - get from first connection attempt
-            // Note: In production, password should be stored securely in the cache
-            String password = null; // We'll need to handle this
-            
             // Process and send each email
             java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
             int successCount = 0;
             int failureCount = 0;
             long totalDataSize = 0;
-            int reconnectCount = 0;
+            int reconnectWarnings = 0;
             
             for (int i = 0; i < dataArray.size(); i++) {
                 String data = dataArray.get(i);
                 Map<String, Object> emailResult = new HashMap<>();
                 emailResult.put("index", i);
                 
-                // Check if we need to reconnect (after maxBatchSize emails)
+                // Check if we've reached the batch limit before sending
                 if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
-                    logger.info("Reached max batch size (" + maxBatchSize + "), reconnecting...");
-                    try {
-                        // Note: This requires password which we don't have here
-                        // The connection will need to be re-established by the client
-                        // For now, we log a warning
-                        logger.warning("Max batch size reached but automatic reconnection requires password. " +
-                                     "Client should call /api/smtp/close and /api/smtp/open to reconnect.");
-                        connectionInfo.resetEmailsSent();
-                        reconnectCount++;
-                    } catch (Exception e) {
-                        logger.warning("Failed to reconnect: " + e.getMessage());
-                    }
+                    logger.warning("Max batch size (" + maxBatchSize + ") reached. " +
+                                 "Client should call /api/smtp/close and /api/smtp/open to reconnect.");
+                    reconnectWarnings++;
                 }
                 
                 if (data == null || data.trim().isEmpty()) {
@@ -427,7 +414,7 @@ public class SmtpConnectionService {
                         totalDataSize += dataSize;
                         successCount++;
                         
-                        // Increment email counter
+                        // Increment email counter (thread-safe)
                         connectionInfo.incrementEmailsSent();
                     } else {
                         emailResult.put("error", sendResult.get("error"));
@@ -450,12 +437,13 @@ public class SmtpConnectionService {
             result.put("totalDataSize", totalDataSize);
             result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
             result.put("maxBatchSize", maxBatchSize);
-            if (reconnectCount > 0) {
-                result.put("reconnectWarning", "Reached max batch size " + reconnectCount + " time(s). Consider reconnecting.");
+            if (reconnectWarnings > 0) {
+                result.put("reconnectWarning", "Reached max batch size " + reconnectWarnings + " time(s). Consider reconnecting.");
             }
             result.put("results", results);
             
             logger.info("Sent " + successCount + "/" + dataArray.size() + " emails successfully in " + sendTime + "ms");
+
             
         } catch (Exception e) {
             logger.severe("Failed to send emails from .eml data: " + e.getMessage());

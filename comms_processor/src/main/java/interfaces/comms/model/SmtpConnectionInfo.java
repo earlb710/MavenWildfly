@@ -4,6 +4,7 @@ import jakarta.mail.Transport;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -21,7 +22,7 @@ public class SmtpConnectionInfo {
     private volatile Instant lastUsedTime;
     private final Instant createdTime;
     private final List<Instant> usageHistory;
-    private volatile int emailsSentSinceConnect;
+    private final AtomicInteger emailsSentSinceConnect;
     private final Object lock = new Object();
     
     public SmtpConnectionInfo(String host, String username, Transport transport) {
@@ -33,7 +34,7 @@ public class SmtpConnectionInfo {
         this.lastUsedTime = Instant.now();
         this.usageHistory = new ArrayList<>();
         this.usageHistory.add(this.lastUsedTime);
-        this.emailsSentSinceConnect = 0;
+        this.emailsSentSinceConnect = new AtomicInteger(0);
     }
     
     public static String generateKey(String host, String username) {
@@ -124,20 +125,21 @@ public class SmtpConnectionInfo {
      * Gets the number of emails sent since the last connection.
      */
     public int getEmailsSentSinceConnect() {
-        return emailsSentSinceConnect;
+        return emailsSentSinceConnect.get();
     }
     
     /**
      * Increments the count of emails sent since connection.
+     * Thread-safe using AtomicInteger.
      */
     public void incrementEmailsSent() {
-        emailsSentSinceConnect++;
+        emailsSentSinceConnect.incrementAndGet();
     }
     
     /**
      * Resets the emails sent counter (typically after reconnection).
      */
     public void resetEmailsSent() {
-        emailsSentSinceConnect = 0;
+        emailsSentSinceConnect.set(0);
     }
 }
