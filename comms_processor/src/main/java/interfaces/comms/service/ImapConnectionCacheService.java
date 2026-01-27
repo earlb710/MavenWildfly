@@ -178,6 +178,27 @@ public class ImapConnectionCacheService {
     }
     
     /**
+     * Closes a specific cached connection.
+     * 
+     * @param host IMAPS server host
+     * @param username Username
+     * @return true if connection was found and closed, false otherwise
+     */
+    public boolean closeConnection(String host, String username) {
+        String key = ImapConnectionInfo.generateKey(host, username);
+        
+        ImapConnectionInfo info = connectionCache.remove(key);
+        if (info != null) {
+            info.close();
+            logger.info("Manually closed connection: " + key);
+            return true;
+        }
+        
+        logger.fine("Connection not found for closing: " + key);
+        return false;
+    }
+    
+    /**
      * Sets the maximum number of connections in the cache.
      * 
      * @param maxConnections Maximum number of connections (default 50)

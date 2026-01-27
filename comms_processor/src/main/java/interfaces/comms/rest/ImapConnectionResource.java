@@ -32,6 +32,7 @@ public class ImapConnectionResource {
 
     /**
      * Tests IMAPS connection with provided credentials.
+     * Does NOT cache the connection. Includes connection timing.
      * 
      * Request body example:
      * {
@@ -41,15 +42,18 @@ public class ImapConnectionResource {
      * }
      * 
      * @param request Map containing host, username, and password
-     * @return Response with SUCCESS or FAILED message
+     * @return Response with success status and connection time
      */
     @POST
     @Path("/test")
     public Response testConnection(Map<String, String> request) {
         // Validate request body
         if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("FAILED: Request body is required")
+                    .entity(error)
                     .build();
         }
         
@@ -57,33 +61,131 @@ public class ImapConnectionResource {
         String username = request.get("username");
         String password = request.get("password");
         
-        // Validate required fields
-        if (host == null || host.trim().isEmpty()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("FAILED: Host is required")
-                    .build();
-        }
+        // Test the connection (not cached)
+        Map<String, Object> result = imapConnectionService.testConnection(host, username, password);
         
-        if (username == null || username.trim().isEmpty()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("FAILED: Username is required")
-                    .build();
-        }
-        
-        if (password == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("FAILED: Password is required")
-                    .build();
-        }
-        
-        // Test the connection
-        boolean success = imapConnectionService.testConnection(host, username, password);
-        
-        if (success) {
-            return Response.ok("SUCCESS").build();
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
         } else {
             return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                    .entity("FAILED")
+                    .entity(result)
+                    .build();
+        }
+    }
+    
+    /**
+     * Opens a cached IMAPS connection.
+     * 
+     * Request body example:
+     * {
+     *   "host": "imap.gmail.com",
+     *   "username": "user@gmail.com",
+     *   "password": "app-password"
+     * }
+     * 
+     * @param request Map containing host, username, and password
+     * @return Response with success status
+     */
+    @POST
+    @Path("/open")
+    public Response openConnection(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String host = request.get("host");
+        String username = request.get("username");
+        String password = request.get("password");
+        
+        Map<String, Object> result = imapConnectionService.openConnection(host, username, password);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(result)
+                    .build();
+        }
+    }
+    
+    /**
+     * Closes a cached IMAPS connection.
+     * 
+     * Request body example:
+     * {
+     *   "host": "imap.gmail.com",
+     *   "username": "user@gmail.com"
+     * }
+     * 
+     * @param request Map containing host and username
+     * @return Response with success status
+     */
+    @POST
+    @Path("/close")
+    public Response closeConnection(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String host = request.get("host");
+        String username = request.get("username");
+        
+        Map<String, Object> result = imapConnectionService.closeConnection(host, username);
+        
+        return Response.ok(result).build();
+    }
+    
+    /**
+     * Gets the count of emails in a mailbox.
+     * 
+     * Request body example:
+     * {
+     *   "host": "imap.gmail.com",
+     *   "username": "user@gmail.com",
+     *   "password": "app-password",
+     *   "mailbox": "INBOX"  // optional, defaults to INBOX
+     * }
+     * 
+     * @param request Map containing host, username, password, and optional mailbox
+     * @return Response with message count
+     */
+    @POST
+    @Path("/mailboxCount")
+    public Response getMailboxCount(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String host = request.get("host");
+        String username = request.get("username");
+        String password = request.get("password");
+        String mailbox = request.get("mailbox"); // Optional, defaults to INBOX
+        
+        Map<String, Object> result = imapConnectionService.getMailboxCount(host, username, password, mailbox);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity(result)
                     .build();
         }
     }

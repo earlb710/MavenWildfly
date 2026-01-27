@@ -232,7 +232,7 @@ Base URL: `http://localhost:8080/comms_processor/api/imap`
 
 **Endpoint:** `POST /api/imap/test`
 
-**Description:** Tests connectivity to an IMAPS server using provided credentials. Uses TLS 1.2/1.3 encryption for secure connections to IMAPS servers on port 993.
+**Description:** Tests connectivity to an IMAPS server using provided credentials. Uses TLS 1.2/1.3 encryption for secure connections to IMAPS servers on port 993. **Does NOT cache the connection.**
 
 **Request Body:**
 ```json
@@ -244,18 +244,20 @@ Base URL: `http://localhost:8080/comms_processor/api/imap`
 ```
 
 **Success Response (200 OK):**
-```
-SUCCESS
+```json
+{
+  "success": true,
+  "connectionTimeMs": 1250
+}
 ```
 
 **Failure Response (503 Service Unavailable):**
-```
-FAILED
-```
-
-**Error Response (400 Bad Request):**
-```
-FAILED: <error message>
+```json
+{
+  "success": false,
+  "error": "Connection refused",
+  "connectionTimeMs": 10050
+}
 ```
 
 **Usage Example:**
@@ -271,13 +273,121 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/test \
 
 **Notes:**
 - All three fields (host, username, password) are required
-- The endpoint tests connection only and does not perform any email operations
+- Returns connection time in milliseconds
 - Supports TLS 1.2 and TLS 1.3 encryption
 - Default connection timeout is 10 seconds
 - Standard IMAPS port 993 is used
-- **Connections are cached** for improved performance (see Connection Cache section below)
+- **Connection is NOT cached** - creates a new connection for each test
 
-#### 2. IMAPS Connection Cache Status
+#### 2. Open IMAPS Connection (Cached)
+
+**Endpoint:** `POST /api/imap/open`
+
+**Description:** Opens and caches an IMAPS connection for reuse.
+
+**Request Body:**
+```json
+{
+  "host": "imap.gmail.com",
+  "username": "user@gmail.com",
+  "password": "your-password"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "host": "imap.gmail.com",
+  "username": "user@gmail.com",
+  "cached": true
+}
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/imap/open \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "imap.gmail.com",
+    "username": "user@gmail.com",
+    "password": "your-password"
+  }'
+```
+
+#### 3. Close IMAPS Connection
+
+**Endpoint:** `POST /api/imap/close`
+
+**Description:** Closes a cached IMAPS connection.
+
+**Request Body:**
+```json
+{
+  "host": "imap.gmail.com",
+  "username": "user@gmail.com"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true
+}
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/imap/close \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "imap.gmail.com",
+    "username": "user@gmail.com"
+  }'
+```
+
+#### 4. Get Mailbox Count
+
+**Endpoint:** `POST /api/imap/mailboxCount`
+
+**Description:** Returns the number of emails in a specified mailbox. Uses cached connections.
+
+**Request Body:**
+```json
+{
+  "host": "imap.gmail.com",
+  "username": "user@gmail.com",
+  "password": "your-password",
+  "mailbox": "INBOX"
+}
+```
+
+**Note:** The `mailbox` field is optional and defaults to `INBOX` if not provided.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "mailbox": "INBOX",
+  "messageCount": 42,
+  "host": "imap.gmail.com",
+  "username": "user@gmail.com"
+}
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxCount \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "imap.gmail.com",
+    "username": "user@gmail.com",
+    "password": "your-password",
+    "mailbox": "INBOX"
+  }'
+```
+
+#### 5. IMAPS Connection Cache Status
 
 **Endpoint:** `GET /api/imap/status`
 

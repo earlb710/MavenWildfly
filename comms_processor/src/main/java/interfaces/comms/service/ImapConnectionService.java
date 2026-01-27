@@ -5,6 +5,8 @@ import jakarta.mail.Session;
 import jakarta.mail.Store;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -26,51 +28,235 @@ public class ImapConnectionService {
 
     /**
      * Tests connection to an IMAPS server using the provided credentials.
-     * Uses TLS 1.2+ for secure connections and caches connections for reuse.
+     * Uses TLS 1.2+ for secure connections. Does NOT cache the connection.
      * 
      * @param host The IMAPS server hostname or IP address
      * @param username The username for authentication
      * @param password The password for authentication
-     * @return true if connection is successful, false otherwise
+     * @return Map containing success status and connection time in milliseconds
      */
-    public boolean testConnection(String host, String username, String password) {
+    public Map<String, Object> testConnection(String host, String username, String password) {
+        Map<String, Object> result = new HashMap<>();
+        Store store = null;
+        long startTime = System.currentTimeMillis();
+        
         try {
             // Validate input parameters
             if (host == null || host.trim().isEmpty()) {
                 logger.warning("IMAPS connection failed: Host is required");
-                return false;
+                result.put("success", false);
+                result.put("error", "Host is required");
+                return result;
             }
             
             if (username == null || username.trim().isEmpty()) {
                 logger.warning("IMAPS connection failed: Username is required");
-                return false;
+                result.put("success", false);
+                result.put("error", "Username is required");
+                return result;
             }
             
             if (password == null) {
                 logger.warning("IMAPS connection failed: Password is required");
-                return false;
+                result.put("success", false);
+                result.put("error", "Password is required");
+                return result;
             }
             
             // Configure IMAPS properties with latest encryption
             Properties props = getImapProperties(host);
             
-            // Get or create cached connection
+            // Create new connection (no caching for test)
             logger.info("Attempting IMAPS connection to: " + host + " with user: " + username);
-            ImapConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
+            Session session = Session.getInstance(props, null);
+            store = session.getStore(IMAPS_PROTOCOL);
+            store.connect(host, username, password);
             
-            if (connectionInfo.isConnected()) {
-                logger.info("IMAPS connection successful to: " + host);
-                return true;
+            long connectionTime = System.currentTimeMillis() - startTime;
+            
+            if (store.isConnected()) {
+                logger.info("IMAPS connection successful to: " + host + " in " + connectionTime + "ms");
+                result.put("success", true);
+                result.put("connectionTimeMs", connectionTime);
             } else {
                 logger.warning("IMAPS connection failed: Store not connected");
-                return false;
+                result.put("success", false);
+                result.put("error", "Store not connected");
+                result.put("connectionTimeMs", connectionTime);
             }
             
         } catch (Exception e) {
+            long connectionTime = System.currentTimeMillis() - startTime;
             logger.severe("IMAPS connection failed: " + e.getMessage());
             logger.fine("Exception details: " + e.getClass().getName());
-            return false;
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            result.put("connectionTimeMs", connectionTime);
+        } finally {
+            // Always close the test connection
+            if (store != null) {
+                try {
+                    store.close();
+                    logger.fine("Test IMAPS connection closed");
+                } catch (Exception e) {
+                    logger.warning("Error closing test IMAPS connection: " + e.getMessage());
+                }
+            }
         }
+        
+        return result;
+    }
+    
+    /**
+     * Opens a cached IMAPS connection.
+     * 
+     * @param host The IMAPS server hostname or IP address
+     * @param username The username for authentication
+     * @param password The password for authentication
+     * @return Map containing success status and connection info
+     */
+    public Map<String, Object> openConnection(String host, String username, String password) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // Validate input parameters
+            if (host == null || host.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Host is required");
+                return result;
+            }
+            
+            if (username == null || username.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Username is required");
+                return result;
+            }
+            
+            if (password == null) {
+                result.put("success", false);
+                result.put("error", "Password is required");
+                return result;
+            }
+            
+            // Configure IMAPS properties
+            Properties props = getImapProperties(host);
+            
+            // Get or create cached connection
+            ImapConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
+            
+            if (connectionInfo.isConnected()) {
+                result.put("success", true);
+                result.put("host", host);
+                result.put("username", username);
+                result.put("cached", true);
+            } else {
+                result.put("success", false);
+                result.put("error", "Connection not established");
+            }
+            
+        } catch (Exception e) {
+            logger.severe("Failed to open cached connection: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Closes a cached IMAPS connection.
+     * 
+     * @param host The IMAPS server hostname or IP address
+     * @param username The username
+     * @return Map containing success status
+     */
+    public Map<String, Object> closeConnection(String host, String username) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            boolean closed = cacheService.closeConnection(host, username);
+            result.put("success", closed);
+            if (!closed) {
+                result.put("message", "Connection not found in cache");
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to close connection: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Gets the count of emails in a mailbox.
+     * 
+     * @param host The IMAPS server hostname or IP address
+     * @param username The username for authentication
+     * @param password The password for authentication
+     * @param mailbox The mailbox name (default "INBOX")
+     * @return Map containing success status and message count
+     */
+    public Map<String, Object> getMailboxCount(String host, String username, String password, String mailbox) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // Validate input parameters
+            if (host == null || host.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Host is required");
+                return result;
+            }
+            
+            if (username == null || username.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Username is required");
+                return result;
+            }
+            
+            if (password == null) {
+                result.put("success", false);
+                result.put("error", "Password is required");
+                return result;
+            }
+            
+            // Default to INBOX if not specified
+            if (mailbox == null || mailbox.trim().isEmpty()) {
+                mailbox = "INBOX";
+            }
+            
+            // Configure IMAPS properties
+            Properties props = getImapProperties(host);
+            
+            // Get or create cached connection
+            ImapConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
+            
+            if (connectionInfo.isConnected()) {
+                // Get the folder and count messages
+                jakarta.mail.Folder folder = connectionInfo.getStore().getFolder(mailbox);
+                folder.open(jakarta.mail.Folder.READ_ONLY);
+                
+                int messageCount = folder.getMessageCount();
+                
+                folder.close(false);
+                
+                result.put("success", true);
+                result.put("mailbox", mailbox);
+                result.put("messageCount", messageCount);
+                result.put("host", host);
+                result.put("username", username);
+            } else {
+                result.put("success", false);
+                result.put("error", "Connection not established");
+            }
+            
+        } catch (Exception e) {
+            logger.severe("Failed to get mailbox count: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
     }
     
     /**
