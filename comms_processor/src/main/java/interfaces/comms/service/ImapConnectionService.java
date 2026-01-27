@@ -1,8 +1,8 @@
 package interfaces.comms.service;
 
+import jakarta.mail.Session;
+import jakarta.mail.Store;
 import javax.ejb.Stateless;
-import javax.mail.Session;
-import javax.mail.Store;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -63,7 +63,9 @@ public class ImapConnectionService {
             props.setProperty("mail.imaps.ssl.enable", "true");
             props.setProperty("mail.imaps.ssl.protocols", "TLSv1.2 TLSv1.3"); // Use TLS 1.2 and 1.3
             props.setProperty("mail.imaps.ssl.checkserveridentity", "true");
-            props.setProperty("mail.imaps.ssl.trust", "*"); // Trust all certificates (for testing)
+            // Note: In production, configure proper certificate trust store instead of trusting all
+            // For testing purposes only - this accepts all certificates
+            props.setProperty("mail.imaps.ssl.trust", "*");
             
             // Create session and store
             Session session = Session.getInstance(props, null);

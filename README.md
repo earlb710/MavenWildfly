@@ -41,6 +41,7 @@ comms_processor/
 - **Jakarta EE API 8.0.0** - Java EE platform APIs (provided by Wildfly)
 - **PostgreSQL JDBC Driver 42.7.7** - PostgreSQL database connectivity (patched for security vulnerabilities)
 - **Oracle JDBC Driver 21.9.0.0** - Oracle database connectivity
+- **Jakarta Mail 2.0.1** - JavaMail API for IMAPS/email connectivity
 - **JUnit 4.13.2** - Unit testing framework
 
 ## Building the Project
@@ -222,6 +223,58 @@ curl http://localhost:8080/comms_processor/api/status/serverStatus
 ```bash
 curl http://localhost:8080/comms_processor/api/status/datasources
 ```
+
+### IMAPS Connection Endpoints
+
+Base URL: `http://localhost:8080/comms_processor/api/imap`
+
+#### 1. Test IMAPS Connection
+
+**Endpoint:** `POST /api/imap/test`
+
+**Description:** Tests connectivity to an IMAPS server using provided credentials. Uses TLS 1.2/1.3 encryption for secure connections to IMAPS servers on port 993.
+
+**Request Body:**
+```json
+{
+  "host": "imap.gmail.com",
+  "username": "user@gmail.com",
+  "password": "your-password"
+}
+```
+
+**Success Response (200 OK):**
+```
+SUCCESS
+```
+
+**Failure Response (503 Service Unavailable):**
+```
+FAILED
+```
+
+**Error Response (400 Bad Request):**
+```
+FAILED: <error message>
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/imap/test \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "imap.gmail.com",
+    "username": "user@gmail.com",
+    "password": "your-password"
+  }'
+```
+
+**Notes:**
+- All three fields (host, username, password) are required
+- The endpoint tests connection only and does not perform any email operations
+- Supports TLS 1.2 and TLS 1.3 encryption
+- Default connection timeout is 10 seconds
+- Standard IMAPS port 993 is used
 
 ## Testing
 
