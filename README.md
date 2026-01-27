@@ -676,6 +676,7 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
   - An array of strings, each containing base64 encoded .eml format email
 - Data can be optionally gzipped before base64 encoding (automatically detected)
 - **Connection must already be open/cached** - Returns error if connection not found
+- **Automatic Reconnection**: When sending multiple emails (array), if the `maxBatchSize` limit is reached during processing, the connection automatically disconnects and reconnects. The client does not need to manage reconnections manually.
 
 **Success Response (200 OK) - Single Email:**
 ```json
@@ -699,6 +700,8 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
   "successCount": 3,
   "failureCount": 0,
   "totalDataSize": 12288,
+  "emailsSentSinceConnect": 3,
+  "maxBatchSize": 100,
   "results": [
     {
       "index": 0,
@@ -716,6 +719,25 @@ curl -X POST http://localhost:8080/comms_processor/api/smtp/sendTextMessage \
       "dataSize": 4096
     }
   ]
+}
+```
+
+**Success Response with Auto-Reconnection:**
+```json
+{
+  "success": true,
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "sendTimeMs": 5200,
+  "totalEmails": 150,
+  "successCount": 150,
+  "failureCount": 0,
+  "totalDataSize": 614400,
+  "emailsSentSinceConnect": 50,
+  "maxBatchSize": 100,
+  "reconnectCount": 1,
+  "message": "Auto-reconnected 1 time(s) during batch processing",
+  "results": [...]
 }
 ```
 

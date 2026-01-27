@@ -18,6 +18,8 @@ public class SmtpConnectionInfo {
     private final String connectionKey;
     private final String host;
     private final String username;
+    private final String password; // Stored for automatic reconnection
+    private final int port;
     private final Transport transport;
     private volatile Instant lastUsedTime;
     private final Instant createdTime;
@@ -25,9 +27,11 @@ public class SmtpConnectionInfo {
     private final AtomicInteger emailsSentSinceConnect;
     private final Object lock = new Object();
     
-    public SmtpConnectionInfo(String host, String username, Transport transport) {
+    public SmtpConnectionInfo(String host, String username, String password, int port, Transport transport) {
         this.host = host;
         this.username = username;
+        this.password = password;
+        this.port = port;
         this.transport = transport;
         this.connectionKey = generateKey(host, username);
         this.createdTime = Instant.now();
@@ -51,6 +55,14 @@ public class SmtpConnectionInfo {
     
     public String getUsername() {
         return username;
+    }
+    
+    public String getPassword() {
+        return password;
+    }
+    
+    public int getPort() {
+        return port;
     }
     
     public Transport getTransport() {

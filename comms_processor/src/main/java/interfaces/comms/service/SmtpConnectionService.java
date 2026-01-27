@@ -334,6 +334,7 @@ public class SmtpConnectionService {
     /**
      * Sends multiple emails in .eml format using a cached SMTP connection.
      * Accepts an array of base64 encoded (optionally gzipped) .eml format data.
+     * Automatically reconnects when maxBatchSize is reached.
      * 
      * @param smtpHost The SMTP server host
      * @param smtpUser The SMTP username
@@ -380,23 +381,44 @@ public class SmtpConnectionService {
                 return result;
             }
             
+            // Get credentials for reconnection (stored in connection info)
+            String password = connectionInfo.getPassword();
+            if (password == null || password.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Password not available for automatic reconnection. Connection may have expired.");
+                return result;
+            }
+            
             // Process and send each email
             java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
             int successCount = 0;
             int failureCount = 0;
             long totalDataSize = 0;
-            int reconnectWarnings = 0;
+            int reconnectCount = 0;
             
             for (int i = 0; i < dataArray.size(); i++) {
                 String data = dataArray.get(i);
                 Map<String, Object> emailResult = new HashMap<>();
                 emailResult.put("index", i);
                 
-                // Check if we've reached the batch limit before sending
+                // Check if we've reached the batch limit before sending - auto reconnect
                 if (connectionInfo.getEmailsSentSinceConnect() >= maxBatchSize) {
-                    logger.warning("Max batch size (" + maxBatchSize + ") reached. " +
-                                 "Client should call /api/smtp/close and /api/smtp/open to reconnect.");
-                    reconnectWarnings++;
+                    logger.info("Max batch size (" + maxBatchSize + ") reached at index " + i + ". Auto-reconnecting...");
+                    try {
+                        // Get port from connection info
+                        int port = connectionInfo.getPort() > 0 ? connectionInfo.getPort() : DEFAULT_SMTP_PORT;
+                        Properties props = getSmtpProperties(smtpHost, port);
+                        connectionInfo = cacheService.reconnect(smtpHost, smtpUser, password, props);
+                        reconnectCount++;
+                        logger.info("Successfully reconnected SMTP connection");
+                    } catch (Exception e) {
+                        logger.severe("Failed to auto-reconnect: " + e.getMessage());
+                        emailResult.put("success", false);
+                        emailResult.put("error", "Auto-reconnect failed: " + e.getMessage());
+                        failureCount++;
+                        results.add(emailResult);
+                        continue;
+                    }
                 }
                 
                 if (data == null || data.trim().isEmpty()) {
@@ -437,12 +459,14 @@ public class SmtpConnectionService {
             result.put("totalDataSize", totalDataSize);
             result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
             result.put("maxBatchSize", maxBatchSize);
-            if (reconnectWarnings > 0) {
-                result.put("reconnectWarning", "Reached max batch size " + reconnectWarnings + " time(s). Consider reconnecting.");
+            if (reconnectCount > 0) {
+                result.put("reconnectCount", reconnectCount);
+                result.put("message", "Auto-reconnected " + reconnectCount + " time(s) during batch processing");
             }
             result.put("results", results);
             
-            logger.info("Sent " + successCount + "/" + dataArray.size() + " emails successfully in " + sendTime + "ms");
+            logger.info("Sent " + successCount + "/" + dataArray.size() + " emails successfully in " + sendTime + "ms" +
+                       (reconnectCount > 0 ? " (auto-reconnected " + reconnectCount + " times)" : ""));
 
             
         } catch (Exception e) {

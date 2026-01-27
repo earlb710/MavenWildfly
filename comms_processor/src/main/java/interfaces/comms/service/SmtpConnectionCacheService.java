@@ -78,6 +78,9 @@ public class SmtpConnectionCacheService {
     public SmtpConnectionInfo getOrCreateConnection(String host, String username, String password, Properties props) throws Exception {
         String key = SmtpConnectionInfo.generateKey(host, username);
         
+        // Extract port from properties
+        int port = Integer.parseInt(props.getProperty("mail.smtps.port", "465"));
+        
         // Try to get and update existing connection atomically
         SmtpConnectionInfo existingInfo = connectionCache.computeIfPresent(key, (k, info) -> {
             if (info.isConnected()) {
@@ -105,7 +108,7 @@ public class SmtpConnectionCacheService {
         Transport transport = session.getTransport("smtps");
         transport.connect(host, username, password);
         
-        SmtpConnectionInfo newInfo = new SmtpConnectionInfo(host, username, transport);
+        SmtpConnectionInfo newInfo = new SmtpConnectionInfo(host, username, password, port, transport);
         connectionCache.put(key, newInfo);
         
         logger.info("Created new cached SMTP connection for: " + key + " (total: " + connectionCache.size() + ")");
@@ -281,6 +284,9 @@ public class SmtpConnectionCacheService {
     public SmtpConnectionInfo reconnect(String host, String username, String password, Properties props) throws Exception {
         String key = SmtpConnectionInfo.generateKey(host, username);
         
+        // Extract port from properties
+        int port = Integer.parseInt(props.getProperty("mail.smtps.port", "465"));
+        
         // Close existing connection
         SmtpConnectionInfo oldInfo = connectionCache.remove(key);
         if (oldInfo != null) {
@@ -293,7 +299,7 @@ public class SmtpConnectionCacheService {
         Transport transport = session.getTransport("smtps");
         transport.connect(host, username, password);
         
-        SmtpConnectionInfo newInfo = new SmtpConnectionInfo(host, username, transport);
+        SmtpConnectionInfo newInfo = new SmtpConnectionInfo(host, username, password, port, transport);
         connectionCache.put(key, newInfo);
         
         logger.info("Reconnected SMTP connection: " + key + " (total: " + connectionCache.size() + ")");
