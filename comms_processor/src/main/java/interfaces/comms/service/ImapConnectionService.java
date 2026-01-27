@@ -1,0 +1,102 @@
+package interfaces.comms.service;
+
+import javax.ejb.Stateless;
+import javax.mail.Session;
+import javax.mail.Store;
+import java.util.Properties;
+import java.util.logging.Logger;
+
+/**
+ * Service to test IMAPS server connections with TLS encryption.
+ * Provides functionality to verify IMAPS server connectivity using host, username, and password.
+ */
+@Stateless
+public class ImapConnectionService {
+
+    private static final Logger logger = Logger.getLogger(ImapConnectionService.class.getName());
+    
+    private static final String IMAPS_PROTOCOL = "imaps";
+    private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
+
+    /**
+     * Tests connection to an IMAPS server using the provided credentials.
+     * Uses TLS 1.2+ for secure connections.
+     * 
+     * @param host The IMAPS server hostname or IP address
+     * @param username The username for authentication
+     * @param password The password for authentication
+     * @return true if connection is successful, false otherwise
+     */
+    public boolean testConnection(String host, String username, String password) {
+        Store store = null;
+        
+        try {
+            // Validate input parameters
+            if (host == null || host.trim().isEmpty()) {
+                logger.warning("IMAPS connection failed: Host is required");
+                return false;
+            }
+            
+            if (username == null || username.trim().isEmpty()) {
+                logger.warning("IMAPS connection failed: Username is required");
+                return false;
+            }
+            
+            if (password == null) {
+                logger.warning("IMAPS connection failed: Password is required");
+                return false;
+            }
+            
+            // Configure IMAPS properties with latest encryption
+            Properties props = new Properties();
+            
+            // Enable IMAPS protocol
+            props.setProperty("mail.store.protocol", IMAPS_PROTOCOL);
+            
+            // Configure connection settings
+            props.setProperty("mail.imaps.host", host);
+            props.setProperty("mail.imaps.port", "993"); // Standard IMAPS port
+            props.setProperty("mail.imaps.connectiontimeout", String.valueOf(DEFAULT_TIMEOUT));
+            props.setProperty("mail.imaps.timeout", String.valueOf(DEFAULT_TIMEOUT));
+            
+            // Enable TLS/SSL with latest encryption
+            props.setProperty("mail.imaps.ssl.enable", "true");
+            props.setProperty("mail.imaps.ssl.protocols", "TLSv1.2 TLSv1.3"); // Use TLS 1.2 and 1.3
+            props.setProperty("mail.imaps.ssl.checkserveridentity", "true");
+            props.setProperty("mail.imaps.ssl.trust", "*"); // Trust all certificates (for testing)
+            
+            // Create session and store
+            Session session = Session.getInstance(props, null);
+            session.setDebug(false); // Set to true for debugging
+            
+            store = session.getStore(IMAPS_PROTOCOL);
+            
+            // Attempt to connect
+            logger.info("Attempting IMAPS connection to: " + host + " with user: " + username);
+            store.connect(host, username, password);
+            
+            if (store.isConnected()) {
+                logger.info("IMAPS connection successful to: " + host);
+                return true;
+            } else {
+                logger.warning("IMAPS connection failed: Store not connected");
+                return false;
+            }
+            
+        } catch (Exception e) {
+            logger.severe("IMAPS connection failed: " + e.getMessage());
+            logger.fine("Exception details: " + e.getClass().getName());
+            return false;
+        } finally {
+            // Always close the store connection
+            if (store != null) {
+                try {
+                    store.close();
+                    logger.fine("IMAPS store connection closed");
+                } catch (Exception e) {
+                    logger.warning("Error closing IMAPS store: " + e.getMessage());
+                }
+            }
+        }
+    }
+}
