@@ -91,6 +91,37 @@ public class ImapConnectionCacheService {
     }
     
     /**
+     * Gets an existing cached IMAPS connection without creating a new one.
+     * 
+     * @param host IMAPS server host
+     * @param username Username for authentication
+     * @return ImapConnectionInfo object containing the connection, or null if not found
+     */
+    public ImapConnectionInfo getExistingConnection(String host, String username) {
+        String key = ImapConnectionInfo.generateKey(host, username);
+        
+        // Try to get and update existing connection atomically
+        ImapConnectionInfo existingInfo = connectionCache.computeIfPresent(key, (k, info) -> {
+            if (info.isConnected()) {
+                info.updateLastUsed();
+                return info;
+            } else {
+                // Connection is stale, remove it
+                info.close();
+                return null;
+            }
+        });
+        
+        if (existingInfo != null) {
+            logger.fine("Found cached connection for: " + key);
+        } else {
+            logger.fine("No cached connection found for: " + key);
+        }
+        
+        return existingInfo;
+    }
+    
+    /**
      * Gets all active connection information.
      * 
      * @return List of all cached connections

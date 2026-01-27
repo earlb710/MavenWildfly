@@ -148,17 +148,16 @@ public class ImapConnectionResource {
     }
     
     /**
-     * Gets the count of emails in a mailbox.
+     * Gets the count of emails in a folder.
+     * Requires an existing cached connection (use /api/imap/open first).
      * 
      * Request body example:
      * {
-     *   "host": "imap.gmail.com",
-     *   "username": "user@gmail.com",
-     *   "password": "app-password",
-     *   "mailbox": "INBOX"  // optional, defaults to INBOX
+     *   "mailboxIdentifier": "user@gmail.com@imap.gmail.com",
+     *   "folder": "INBOX"  // optional, defaults to INBOX
      * }
      * 
-     * @param request Map containing host, username, password, and optional mailbox
+     * @param request Map containing mailboxIdentifier (username@host) and optional folder
      * @return Response with message count
      */
     @POST
@@ -174,17 +173,15 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String host = request.get("host");
-        String username = request.get("username");
-        String password = request.get("password");
-        String mailbox = request.get("mailbox"); // Optional, defaults to INBOX
+        String mailboxIdentifier = request.get("mailboxIdentifier");
+        String folder = request.get("folder"); // Optional, defaults to INBOX
         
-        Map<String, Object> result = imapConnectionService.getMailboxCount(host, username, password, mailbox);
+        Map<String, Object> result = imapConnectionService.getMailboxCount(mailboxIdentifier, folder);
         
         if ((Boolean) result.get("success")) {
             return Response.ok(result).build();
         } else {
-            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            return Response.status(Response.Status.BAD_REQUEST)
                     .entity(result)
                     .build();
         }

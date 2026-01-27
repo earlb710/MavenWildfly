@@ -350,40 +350,56 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/close \
 
 **Endpoint:** `POST /api/imap/mailboxCount`
 
-**Description:** Returns the number of emails in a specified mailbox. Uses cached connections.
+**Description:** Returns the number of emails in a specified folder. **Requires an existing cached connection** - use `/api/imap/open` first to establish the connection.
 
 **Request Body:**
 ```json
 {
-  "host": "imap.gmail.com",
-  "username": "user@gmail.com",
-  "password": "your-password",
-  "mailbox": "INBOX"
+  "mailboxIdentifier": "user@gmail.com@imap.gmail.com",
+  "folder": "INBOX"
 }
 ```
 
-**Note:** The `mailbox` field is optional and defaults to `INBOX` if not provided.
+**Notes:** 
+- The `mailboxIdentifier` field is required and must be in format `username@host`
+- The `folder` field is optional and defaults to `INBOX` if not provided
+- The connection must already be open/cached, otherwise an error is returned
 
 **Success Response (200 OK):**
 ```json
 {
   "success": true,
-  "mailbox": "INBOX",
+  "folder": "INBOX",
   "messageCount": 42,
-  "host": "imap.gmail.com",
-  "username": "user@gmail.com"
+  "mailboxIdentifier": "user@gmail.com@imap.gmail.com"
+}
+```
+
+**Error Response (400 Bad Request) - Connection Not Open:**
+```json
+{
+  "success": false,
+  "error": "Connection not open. Use /api/imap/open to establish a connection first"
 }
 ```
 
 **Usage Example:**
 ```bash
-curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxCount \
+# First, open a connection
+curl -X POST http://localhost:8080/comms_processor/api/imap/open \
   -H "Content-Type: application/json" \
   -d '{
     "host": "imap.gmail.com",
     "username": "user@gmail.com",
-    "password": "your-password",
-    "mailbox": "INBOX"
+    "password": "your-password"
+  }'
+
+# Then, get mailbox count
+curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxCount \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailboxIdentifier": "user@gmail.com@imap.gmail.com",
+    "folder": "INBOX"
   }'
 ```
 

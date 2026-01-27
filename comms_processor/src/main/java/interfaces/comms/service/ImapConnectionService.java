@@ -176,52 +176,72 @@ public class ImapConnectionService {
     }
     
     /**
-     * Gets the count of emails in a mailbox.
+     * Gets the count of emails in a folder for an existing cached connection.
+     * Connection must already be open/cached, otherwise returns an error.
      * 
-     * @param host The IMAPS server hostname or IP address
-     * @param username The username for authentication
-     * @param password The password for authentication
-     * @param mailbox The mailbox name (default "INBOX")
+     * @param mailboxIdentifier The mailbox identifier in format "username@host"
+     * @param folder The folder name (default "INBOX")
      * @return Map containing success status and message count
      */
-    public Map<String, Object> getMailboxCount(String host, String username, String password, String mailbox) {
+    public Map<String, Object> getMailboxCount(String mailboxIdentifier, String folder) {
         Map<String, Object> result = new HashMap<>();
-        jakarta.mail.Folder folder = null;
+        jakarta.mail.Folder mailFolder = null;
         
         try {
-            // Validate input parameters
-            Map<String, Object> validationResult = validateCredentials(host, username, password);
-            if (validationResult != null) {
-                return validationResult;
+            // Validate mailbox identifier
+            if (mailboxIdentifier == null || mailboxIdentifier.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Mailbox identifier (username@host) is required");
+                return result;
+            }
+            
+            // Parse username@host format
+            String[] parts = mailboxIdentifier.split("@", 2);
+            if (parts.length != 2) {
+                result.put("success", false);
+                result.put("error", "Invalid mailbox identifier format. Expected: username@host");
+                return result;
+            }
+            
+            String username = parts[0];
+            String host = parts[1];
+            
+            if (username.isEmpty() || host.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "Invalid mailbox identifier. Username and host cannot be empty");
+                return result;
             }
             
             // Default to INBOX if not specified
-            if (mailbox == null || mailbox.trim().isEmpty()) {
-                mailbox = "INBOX";
+            if (folder == null || folder.trim().isEmpty()) {
+                folder = "INBOX";
             }
             
-            // Configure IMAPS properties
-            Properties props = getImapProperties(host);
+            // Get existing cached connection (do NOT create new one)
+            ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(host, username);
             
-            // Get or create cached connection
-            ImapConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
-            
-            if (connectionInfo.isConnected()) {
-                // Get the folder and count messages
-                folder = connectionInfo.getStore().getFolder(mailbox);
-                folder.open(jakarta.mail.Folder.READ_ONLY);
-                
-                int messageCount = folder.getMessageCount();
-                
-                result.put("success", true);
-                result.put("mailbox", mailbox);
-                result.put("messageCount", messageCount);
-                result.put("host", host);
-                result.put("username", username);
-            } else {
+            if (connectionInfo == null) {
                 result.put("success", false);
-                result.put("error", "Connection not established");
+                result.put("error", "Connection not open. Use /api/imap/open to establish a connection first");
+                return result;
             }
+            
+            if (!connectionInfo.isConnected()) {
+                result.put("success", false);
+                result.put("error", "Connection is not active. Use /api/imap/open to establish a connection");
+                return result;
+            }
+            
+            // Get the folder and count messages
+            mailFolder = connectionInfo.getStore().getFolder(folder);
+            mailFolder.open(jakarta.mail.Folder.READ_ONLY);
+            
+            int messageCount = mailFolder.getMessageCount();
+            
+            result.put("success", true);
+            result.put("folder", folder);
+            result.put("messageCount", messageCount);
+            result.put("mailboxIdentifier", mailboxIdentifier);
             
         } catch (Exception e) {
             logger.severe("Failed to get mailbox count: " + e.getMessage());
@@ -229,9 +249,9 @@ public class ImapConnectionService {
             result.put("error", e.getMessage());
         } finally {
             // Always close the folder
-            if (folder != null) {
+            if (mailFolder != null) {
                 try {
-                    folder.close(false);
+                    mailFolder.close(false);
                 } catch (Exception e) {
                     logger.warning("Error closing folder: " + e.getMessage());
                 }
