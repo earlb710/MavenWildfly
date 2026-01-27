@@ -120,22 +120,9 @@ public class ImapConnectionService {
         
         try {
             // Validate input parameters
-            if (host == null || host.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "Host is required");
-                return result;
-            }
-            
-            if (username == null || username.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "Username is required");
-                return result;
-            }
-            
-            if (password == null) {
-                result.put("success", false);
-                result.put("error", "Password is required");
-                return result;
+            Map<String, Object> validationResult = validateCredentials(host, username, password);
+            if (validationResult != null) {
+                return validationResult;
             }
             
             // Configure IMAPS properties
@@ -199,25 +186,13 @@ public class ImapConnectionService {
      */
     public Map<String, Object> getMailboxCount(String host, String username, String password, String mailbox) {
         Map<String, Object> result = new HashMap<>();
+        jakarta.mail.Folder folder = null;
         
         try {
             // Validate input parameters
-            if (host == null || host.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "Host is required");
-                return result;
-            }
-            
-            if (username == null || username.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "Username is required");
-                return result;
-            }
-            
-            if (password == null) {
-                result.put("success", false);
-                result.put("error", "Password is required");
-                return result;
+            Map<String, Object> validationResult = validateCredentials(host, username, password);
+            if (validationResult != null) {
+                return validationResult;
             }
             
             // Default to INBOX if not specified
@@ -233,12 +208,10 @@ public class ImapConnectionService {
             
             if (connectionInfo.isConnected()) {
                 // Get the folder and count messages
-                jakarta.mail.Folder folder = connectionInfo.getStore().getFolder(mailbox);
+                folder = connectionInfo.getStore().getFolder(mailbox);
                 folder.open(jakarta.mail.Folder.READ_ONLY);
                 
                 int messageCount = folder.getMessageCount();
-                
-                folder.close(false);
                 
                 result.put("success", true);
                 result.put("mailbox", mailbox);
@@ -254,9 +227,50 @@ public class ImapConnectionService {
             logger.severe("Failed to get mailbox count: " + e.getMessage());
             result.put("success", false);
             result.put("error", e.getMessage());
+        } finally {
+            // Always close the folder
+            if (folder != null) {
+                try {
+                    folder.close(false);
+                } catch (Exception e) {
+                    logger.warning("Error closing folder: " + e.getMessage());
+                }
+            }
         }
         
         return result;
+    }
+    
+    /**
+     * Validates credentials for IMAPS connection.
+     * 
+     * @param host The host
+     * @param username The username
+     * @param password The password
+     * @return Map with error if validation fails, null if valid
+     */
+    private Map<String, Object> validateCredentials(String host, String username, String password) {
+        Map<String, Object> result = new HashMap<>();
+        
+        if (host == null || host.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "Host is required");
+            return result;
+        }
+        
+        if (username == null || username.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "Username is required");
+            return result;
+        }
+        
+        if (password == null) {
+            result.put("success", false);
+            result.put("error", "Password is required");
+            return result;
+        }
+        
+        return null; // Valid
     }
     
     /**
