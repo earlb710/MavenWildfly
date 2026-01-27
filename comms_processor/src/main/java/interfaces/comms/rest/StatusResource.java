@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 /**
  * REST resource for status endpoints.
@@ -24,6 +25,8 @@ import java.util.Properties;
 @Produces(MediaType.APPLICATION_JSON)
 @RequestScoped
 public class StatusResource {
+
+    private static final Logger logger = Logger.getLogger(StatusResource.class.getName());
 
     @Inject
     private WildFlyManagementService managementService;
@@ -154,21 +157,11 @@ public class StatusResource {
             // Database properties
             Properties dbProps = loadProperties("/database.properties");
             if (dbProps != null && !dbProps.isEmpty()) {
-                Map<String, String> databaseConfig = new HashMap<>();
-                
                 // PostgreSQL configuration
-                Map<String, String> postgresConfig = new HashMap<>();
-                postgresConfig.put("url", maskSensitiveValue(dbProps.getProperty("postgresql.url")));
-                postgresConfig.put("username", maskSensitiveValue(dbProps.getProperty("postgresql.username")));
-                postgresConfig.put("driver", dbProps.getProperty("postgresql.driver"));
-                properties.put("postgresql", postgresConfig);
+                properties.put("postgresql", createDbConfigMap(dbProps, "postgresql"));
                 
                 // Oracle configuration
-                Map<String, String> oracleConfig = new HashMap<>();
-                oracleConfig.put("url", maskSensitiveValue(dbProps.getProperty("oracle.url")));
-                oracleConfig.put("username", maskSensitiveValue(dbProps.getProperty("oracle.username")));
-                oracleConfig.put("driver", dbProps.getProperty("oracle.driver"));
-                properties.put("oracle", oracleConfig);
+                properties.put("oracle", createDbConfigMap(dbProps, "oracle"));
                 
                 // Connection pool settings
                 Map<String, String> poolConfig = new HashMap<>();
@@ -225,15 +218,31 @@ public class StatusResource {
             }
         } catch (Exception e) {
             // Log but don't fail - properties might not be available
-            java.util.logging.Logger.getLogger(StatusResource.class.getName())
-                .warning("Could not load properties from " + resourcePath + ": " + e.getMessage());
+            logger.warning("Could not load properties from " + resourcePath + ": " + e.getMessage());
         }
         return props;
     }
 
     /**
+     * Helper method to create database configuration map from properties.
+     * 
+     * @param dbProps The database properties
+     * @param prefix The property prefix (e.g., "postgresql", "oracle")
+     * @return Map containing URL, username, and driver configuration
+     */
+    private Map<String, String> createDbConfigMap(Properties dbProps, String prefix) {
+        Map<String, String> config = new HashMap<>();
+        config.put("url", maskSensitiveValue(dbProps.getProperty(prefix + ".url")));
+        config.put("username", maskSensitiveValue(dbProps.getProperty(prefix + ".username")));
+        config.put("driver", dbProps.getProperty(prefix + ".driver"));
+        return config;
+    }
+
+    /**
      * Helper method to mask sensitive values in property values.
-     * Shows only first and last few characters for security.
+     * Consistently masks all values to prevent information disclosure.
+     * For values longer than 8 characters, shows first 4 and last 4 characters.
+     * For shorter values, completely masks them.
      */
     private String maskSensitiveValue(String value) {
         if (value == null || value.length() <= 8) {
