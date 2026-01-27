@@ -489,6 +489,191 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/mailboxStats \
 curl http://localhost:8080/comms_processor/api/imap/status
 ```
 
+### SMTP Connection Endpoints
+
+Base URL: `http://localhost:8080/comms_processor/api/smtp`
+
+#### 1. Open SMTP Connection (Cached)
+
+**Endpoint:** `POST /api/smtp/open`
+
+**Description:** Opens and caches an SMTP connection for reuse. Uses TLS 1.2/1.3 encryption for secure connections to SMTPS servers.
+
+**Request Body:**
+```json
+{
+  "host": "smtp.gmail.com",
+  "username": "user@gmail.com",
+  "password": "app-password",
+  "port": 465
+}
+```
+
+**Notes:**
+- `host` is required - the SMTP server hostname
+- `username` is required - the username/email
+- `password` is required - the password for authentication
+- `port` is optional and defaults to 465 (SMTPS port)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "host": "smtp.gmail.com",
+  "username": "user@gmail.com",
+  "port": 465,
+  "cached": true
+}
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/smtp/open \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "smtp.gmail.com",
+    "username": "user@gmail.com",
+    "password": "app-password",
+    "port": 465
+  }'
+```
+
+#### 2. Close SMTP Connection
+
+**Endpoint:** `POST /api/smtp/close`
+
+**Description:** Closes a cached SMTP connection.
+
+**Request Body:**
+```json
+{
+  "host": "smtp.gmail.com",
+  "username": "user@gmail.com"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true
+}
+```
+
+**Usage Example:**
+```bash
+curl -X POST http://localhost:8080/comms_processor/api/smtp/close \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "smtp.gmail.com",
+    "username": "user@gmail.com"
+  }'
+```
+
+#### 3. Send Email
+
+**Endpoint:** `POST /api/smtp/send`
+
+**Description:** Sends an email using a cached SMTP connection. **Requires an existing cached connection** - use `/api/smtp/open` first to establish the connection.
+
+**Request Body:**
+```json
+{
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "fromAddress": "user@gmail.com",
+  "toAddress": "recipient@example.com",
+  "subject": "Test Email",
+  "body": "This is a test email."
+}
+```
+
+**Notes:**
+- `smtpHost` is required - the SMTP server host
+- `smtpUser` is required - the username/email used to open the connection
+- `fromAddress` is required - the sender's email address
+- `toAddress` is required - the recipient's email address
+- `subject` is optional - email subject line
+- `body` is optional - email body text
+- **Connection must already be open/cached** - Returns error if connection not found
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "smtpHost": "smtp.gmail.com",
+  "smtpUser": "user@gmail.com",
+  "from": "user@gmail.com",
+  "to": "recipient@example.com",
+  "sendTimeMs": 850
+}
+```
+
+**Error Response (400 Bad Request) - Connection Not Open:**
+```json
+{
+  "success": false,
+  "error": "Connection not open. Use /api/smtp/open to establish a connection first"
+}
+```
+
+**Usage Example:**
+```bash
+# First, open a connection
+curl -X POST http://localhost:8080/comms_processor/api/smtp/open \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "smtp.gmail.com",
+    "username": "user@gmail.com",
+    "password": "app-password"
+  }'
+
+# Then, send an email
+curl -X POST http://localhost:8080/comms_processor/api/smtp/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "smtpHost": "smtp.gmail.com",
+    "smtpUser": "user@gmail.com",
+    "fromAddress": "user@gmail.com",
+    "toAddress": "recipient@example.com",
+    "subject": "Hello from API",
+    "body": "This email was sent via the SMTP API."
+  }'
+```
+
+#### 4. SMTP Connection Cache Status
+
+**Endpoint:** `GET /api/smtp/status`
+
+**Description:** Returns the status of the SMTP connection cache, including all open connections and their statistics for the last day.
+
+**Response Example:**
+```json
+{
+  "cacheStats": {
+    "totalConnections": 3,
+    "maxConnections": 50,
+    "activeConnections": 3
+  },
+  "connections": [
+    {
+      "host": "smtp.gmail.com",
+      "username": "user@gmail.com",
+      "connected": true,
+      "createdTime": "2026-01-27T12:00:00Z",
+      "lastUsedTime": "2026-01-27T12:30:00Z",
+      "idleTimeSeconds": 60,
+      "usageCountLastDay": 8
+    }
+  ],
+  "timestamp": 1706015345678
+}
+```
+
+**Usage Example:**
+```bash
+curl http://localhost:8080/comms_processor/api/smtp/status
+```
+
 **Connection Cache Behavior:**
 - **Maximum connections**: 50 (default, configurable)
 - **Idle timeout**: 5 minutes - connections not used for 5 minutes are automatically closed
