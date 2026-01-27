@@ -189,32 +189,14 @@ public class ImapConnectionService {
         jakarta.mail.Folder folder = null;
         
         try {
-            // Validate required fields
-            if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxHost is required");
-                return result;
+            // Validate and get connection
+            Map<String, Object> validationResult = validateAndGetConnection(mailboxHost, mailboxUser, mailboxFolder);
+            if (validationResult.containsKey("error")) {
+                return validationResult;
             }
             
-            if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxUser is required");
-                return result;
-            }
-            
-            // Default to INBOX if not specified
-            if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
-                mailboxFolder = "INBOX";
-            }
-            
-            // Get existing cached connection (do NOT create new one)
-            ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(mailboxHost, mailboxUser);
-            
-            if (connectionInfo == null || !connectionInfo.isConnected()) {
-                result.put("success", false);
-                result.put("error", "Connection not open. Use /api/imap/open to establish a connection first");
-                return result;
-            }
+            ImapConnectionInfo connectionInfo = (ImapConnectionInfo) validationResult.get("connectionInfo");
+            mailboxFolder = (String) validationResult.get("mailboxFolder");
             
             // Get the folder and count messages
             folder = connectionInfo.getStore().getFolder(mailboxFolder);
@@ -260,32 +242,14 @@ public class ImapConnectionService {
         jakarta.mail.Folder folder = null;
         
         try {
-            // Validate required fields
-            if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxHost is required");
-                return result;
+            // Validate and get connection
+            Map<String, Object> validationResult = validateAndGetConnection(mailboxHost, mailboxUser, mailboxFolder);
+            if (validationResult.containsKey("error")) {
+                return validationResult;
             }
             
-            if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxUser is required");
-                return result;
-            }
-            
-            // Default to INBOX if not specified
-            if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
-                mailboxFolder = "INBOX";
-            }
-            
-            // Get existing cached connection (do NOT create new one)
-            ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(mailboxHost, mailboxUser);
-            
-            if (connectionInfo == null || !connectionInfo.isConnected()) {
-                result.put("success", false);
-                result.put("error", "Connection not open. Use /api/imap/open to establish a connection first");
-                return result;
-            }
+            ImapConnectionInfo connectionInfo = (ImapConnectionInfo) validationResult.get("connectionInfo");
+            mailboxFolder = (String) validationResult.get("mailboxFolder");
             
             // Get the folder and open it
             folder = connectionInfo.getStore().getFolder(mailboxFolder);
@@ -301,30 +265,40 @@ public class ImapConnectionService {
             java.util.Date newestDate = null;
             
             if (messageCount > 0) {
-                // Get all messages
-                jakarta.mail.Message[] messages = folder.getMessages();
-                
-                for (jakarta.mail.Message message : messages) {
-                    // Get message size
-                    int size = message.getSize();
-                    if (size > 0) {
-                        totalSize += size;
-                        if (biggestSize == null || size > biggestSize) {
-                            biggestSize = size;
-                        }
-                        if (smallestSize == null || size < smallestSize) {
-                            smallestSize = size;
-                        }
-                    }
+                // Process messages in batches to avoid memory issues
+                int batchSize = 100;
+                for (int start = 1; start <= messageCount; start += batchSize) {
+                    int end = Math.min(start + batchSize - 1, messageCount);
+                    jakarta.mail.Message[] messages = folder.getMessages(start, end);
                     
-                    // Get message date
-                    java.util.Date receivedDate = message.getReceivedDate();
-                    if (receivedDate != null) {
-                        if (oldestDate == null || receivedDate.before(oldestDate)) {
-                            oldestDate = receivedDate;
+                    // Fetch message metadata in batch for better performance
+                    jakarta.mail.FetchProfile fetchProfile = new jakarta.mail.FetchProfile();
+                    fetchProfile.add(jakarta.mail.FetchProfile.Item.SIZE);
+                    fetchProfile.add(jakarta.mail.FetchProfile.Item.ENVELOPE);
+                    folder.fetch(messages, fetchProfile);
+                    
+                    for (jakarta.mail.Message message : messages) {
+                        // Get message size
+                        int size = message.getSize();
+                        if (size > 0) {
+                            totalSize += size;
+                            if (biggestSize == null || size > biggestSize) {
+                                biggestSize = size;
+                            }
+                            if (smallestSize == null || size < smallestSize) {
+                                smallestSize = size;
+                            }
                         }
-                        if (newestDate == null || receivedDate.after(newestDate)) {
-                            newestDate = receivedDate;
+                        
+                        // Get message date
+                        java.util.Date receivedDate = message.getReceivedDate();
+                        if (receivedDate != null) {
+                            if (oldestDate == null || receivedDate.before(oldestDate)) {
+                                oldestDate = receivedDate;
+                            }
+                            if (newestDate == null || receivedDate.after(newestDate)) {
+                                newestDate = receivedDate;
+                            }
                         }
                     }
                 }
@@ -356,6 +330,50 @@ public class ImapConnectionService {
             }
         }
         
+        return result;
+    }
+    
+    /**
+     * Validates mailbox parameters and retrieves cached connection.
+     * Returns either an error map or a map with connectionInfo and mailboxFolder.
+     * 
+     * @param mailboxHost The mailbox host
+     * @param mailboxUser The mailbox username
+     * @param mailboxFolder The folder name (will default to INBOX if empty)
+     * @return Map containing either error or connectionInfo and mailboxFolder
+     */
+    private Map<String, Object> validateAndGetConnection(String mailboxHost, String mailboxUser, String mailboxFolder) {
+        Map<String, Object> result = new HashMap<>();
+        
+        // Validate required fields
+        if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "mailboxHost is required");
+            return result;
+        }
+        
+        if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "mailboxUser is required");
+            return result;
+        }
+        
+        // Default to INBOX if not specified
+        if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
+            mailboxFolder = "INBOX";
+        }
+        
+        // Get existing cached connection (do NOT create new one)
+        ImapConnectionInfo connectionInfo = cacheService.getExistingConnection(mailboxHost, mailboxUser);
+        
+        if (connectionInfo == null || !connectionInfo.isConnected()) {
+            result.put("success", false);
+            result.put("error", "Connection not open. Use /api/imap/open to establish a connection first");
+            return result;
+        }
+        
+        result.put("connectionInfo", connectionInfo);
+        result.put("mailboxFolder", mailboxFolder);
         return result;
     }
     
