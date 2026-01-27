@@ -9,6 +9,21 @@ This document provides instructions for manually testing the REST status endpoin
 
 ## Test Endpoints
 
+### 0. Test Main API Status HTML Endpoint
+
+Using a browser:
+- Navigate to: http://localhost:8080/comms_processor/api/status.html
+- Should display a formatted HTML page with:
+  - Application status information
+  - Complete list of all available API endpoints
+  - System properties and configuration
+  - Navigation links to other status pages
+
+Using curl (to see raw HTML):
+```bash
+curl http://localhost:8080/comms_processor/api/status.html
+```
+
 ### 1. Test Ping Endpoint
 
 Using curl:
