@@ -9,9 +9,13 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.logging.Logger;
 
 /**
  * REST resource for status endpoints.
@@ -22,8 +26,232 @@ import java.util.Map;
 @RequestScoped
 public class StatusResource {
 
+    private static final Logger logger = Logger.getLogger(StatusResource.class.getName());
+
     @Inject
     private WildFlyManagementService managementService;
+
+    /**
+     * Main status endpoint that lists all available API status pages
+     * and current property values.
+     * 
+     * @return Response with all available API endpoints and property values
+     */
+    @GET
+    public Response getApiStatus() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "ok");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("applicationName", "Communications Processor");
+            response.put("version", "1.0.0-SNAPSHOT");
+            
+            // List all available status endpoints
+            List<Map<String, String>> statusEndpoints = new ArrayList<>();
+            
+            // Status endpoints
+            Map<String, String> ping = new HashMap<>();
+            ping.put("path", "/api/status/ping");
+            ping.put("method", "GET");
+            ping.put("description", "Simple ping endpoint to verify service availability");
+            statusEndpoints.add(ping);
+            
+            Map<String, String> serverStatus = new HashMap<>();
+            serverStatus.put("path", "/api/status/serverStatus");
+            serverStatus.put("method", "GET");
+            serverStatus.put("description", "Returns detailed information about all services running on WildFly");
+            statusEndpoints.add(serverStatus);
+            
+            Map<String, String> serverStatusHtml = new HashMap<>();
+            serverStatusHtml.put("path", "/api/status/serverStatus.html");
+            serverStatusHtml.put("method", "GET");
+            serverStatusHtml.put("description", "HTML version of server status for browser viewing");
+            statusEndpoints.add(serverStatusHtml);
+            
+            Map<String, String> datasources = new HashMap<>();
+            datasources.put("path", "/api/status/datasources");
+            datasources.put("method", "GET");
+            datasources.put("description", "Returns a list of all datasources configured in WildFly");
+            statusEndpoints.add(datasources);
+            
+            Map<String, String> datasourcesHtml = new HashMap<>();
+            datasourcesHtml.put("path", "/api/status/datasources.html");
+            datasourcesHtml.put("method", "GET");
+            datasourcesHtml.put("description", "HTML version of datasources for browser viewing");
+            statusEndpoints.add(datasourcesHtml);
+            
+            // IMAP endpoints
+            Map<String, String> imapTest = new HashMap<>();
+            imapTest.put("path", "/api/imap/test");
+            imapTest.put("method", "POST");
+            imapTest.put("description", "Tests IMAPS connection with provided credentials");
+            statusEndpoints.add(imapTest);
+            
+            Map<String, String> imapOpen = new HashMap<>();
+            imapOpen.put("path", "/api/imap/open");
+            imapOpen.put("method", "POST");
+            imapOpen.put("description", "Opens and caches an IMAPS connection");
+            statusEndpoints.add(imapOpen);
+            
+            Map<String, String> imapClose = new HashMap<>();
+            imapClose.put("path", "/api/imap/close");
+            imapClose.put("method", "POST");
+            imapClose.put("description", "Closes a cached IMAPS connection");
+            statusEndpoints.add(imapClose);
+            
+            Map<String, String> imapMailboxCount = new HashMap<>();
+            imapMailboxCount.put("path", "/api/imap/mailboxCount");
+            imapMailboxCount.put("method", "POST");
+            imapMailboxCount.put("description", "Returns the number of emails in a specified folder");
+            statusEndpoints.add(imapMailboxCount);
+            
+            Map<String, String> imapMailboxStats = new HashMap<>();
+            imapMailboxStats.put("path", "/api/imap/mailboxStats");
+            imapMailboxStats.put("method", "POST");
+            imapMailboxStats.put("description", "Returns detailed statistics for emails in a folder");
+            statusEndpoints.add(imapMailboxStats);
+            
+            Map<String, String> imapStatus = new HashMap<>();
+            imapStatus.put("path", "/api/imap/status");
+            imapStatus.put("method", "GET");
+            imapStatus.put("description", "Returns the status of the IMAPS connection cache");
+            statusEndpoints.add(imapStatus);
+            
+            // SMTP endpoints
+            Map<String, String> smtpOpen = new HashMap<>();
+            smtpOpen.put("path", "/api/smtp/open");
+            smtpOpen.put("method", "POST");
+            smtpOpen.put("description", "Opens and caches an SMTP connection");
+            statusEndpoints.add(smtpOpen);
+            
+            Map<String, String> smtpClose = new HashMap<>();
+            smtpClose.put("path", "/api/smtp/close");
+            smtpClose.put("method", "POST");
+            smtpClose.put("description", "Closes a cached SMTP connection");
+            statusEndpoints.add(smtpClose);
+            
+            Map<String, String> smtpSendText = new HashMap<>();
+            smtpSendText.put("path", "/api/smtp/sendTextMessage");
+            smtpSendText.put("method", "POST");
+            smtpSendText.put("description", "Sends a simple text email using a cached SMTP connection");
+            statusEndpoints.add(smtpSendText);
+            
+            Map<String, String> smtpSend = new HashMap<>();
+            smtpSend.put("path", "/api/smtp/send");
+            smtpSend.put("method", "POST");
+            smtpSend.put("description", "Sends email(s) in .eml format using a cached SMTP connection");
+            statusEndpoints.add(smtpSend);
+            
+            Map<String, String> smtpStatus = new HashMap<>();
+            smtpStatus.put("path", "/api/smtp/status");
+            smtpStatus.put("method", "GET");
+            smtpStatus.put("description", "Returns the status of the SMTP connection cache");
+            statusEndpoints.add(smtpStatus);
+            
+            response.put("availableEndpoints", statusEndpoints);
+            response.put("totalEndpoints", statusEndpoints.size());
+            
+            // Load and include property values
+            Map<String, Object> properties = new HashMap<>();
+            
+            // Database properties
+            Properties dbProps = loadProperties("/database.properties");
+            if (dbProps != null && !dbProps.isEmpty()) {
+                // PostgreSQL configuration
+                properties.put("postgresql", createDbConfigMap(dbProps, "postgresql"));
+                
+                // Oracle configuration
+                properties.put("oracle", createDbConfigMap(dbProps, "oracle"));
+                
+                // Connection pool settings
+                Map<String, String> poolConfig = new HashMap<>();
+                poolConfig.put("min", dbProps.getProperty("connection.pool.min"));
+                poolConfig.put("max", dbProps.getProperty("connection.pool.max"));
+                properties.put("connectionPool", poolConfig);
+            }
+            
+            // System properties related to email processing
+            Map<String, String> emailSenderProps = new HashMap<>();
+            emailSenderProps.put("maxBatchSize", System.getProperty("email-sender.maxBatchSize", "100"));
+            emailSenderProps.put("minBatchSize", System.getProperty("email-sender.minBatchSize", "1"));
+            emailSenderProps.put("maxConnections", System.getProperty("email-sender.maxConnections", "50"));
+            emailSenderProps.put("maxPoolSize", System.getProperty("email-sender.maxPoolSize", "100"));
+            properties.put("emailSender", emailSenderProps);
+            
+            Map<String, String> emailReaderProps = new HashMap<>();
+            emailReaderProps.put("maxBatchSize", System.getProperty("email-reader.maxBatchSize", "100"));
+            emailReaderProps.put("minBatchSize", System.getProperty("email-reader.minBatchSize", "1"));
+            emailReaderProps.put("maxConnections", System.getProperty("email-reader.maxConnections", "50"));
+            emailReaderProps.put("maxPoolSize", System.getProperty("email-reader.maxPoolSize", "100"));
+            properties.put("emailReader", emailReaderProps);
+            
+            // Java system properties
+            Map<String, String> javaProps = new HashMap<>();
+            javaProps.put("version", System.getProperty("java.version"));
+            javaProps.put("vendor", System.getProperty("java.vendor"));
+            javaProps.put("home", System.getProperty("java.home"));
+            properties.put("java", javaProps);
+            
+            response.put("properties", properties);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "Failed to retrieve API status: " + e.getMessage());
+            errorResponse.put("timestamp", System.currentTimeMillis());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                          .entity(errorResponse)
+                          .build();
+        }
+    }
+
+    /**
+     * Helper method to load properties from a resource file.
+     */
+    private Properties loadProperties(String resourcePath) {
+        Properties props = new Properties();
+        try (InputStream input = getClass().getResourceAsStream(resourcePath)) {
+            if (input != null) {
+                props.load(input);
+            }
+        } catch (Exception e) {
+            // Log but don't fail - properties might not be available
+            logger.warning("Could not load properties from " + resourcePath + ": " + e.getMessage());
+        }
+        return props;
+    }
+
+    /**
+     * Helper method to create database configuration map from properties.
+     * 
+     * @param dbProps The database properties
+     * @param prefix The property prefix (e.g., "postgresql", "oracle")
+     * @return Map containing URL, username, and driver configuration
+     */
+    private Map<String, String> createDbConfigMap(Properties dbProps, String prefix) {
+        Map<String, String> config = new HashMap<>();
+        config.put("url", maskSensitiveValue(dbProps.getProperty(prefix + ".url")));
+        config.put("username", maskSensitiveValue(dbProps.getProperty(prefix + ".username")));
+        config.put("driver", dbProps.getProperty(prefix + ".driver"));
+        return config;
+    }
+
+    /**
+     * Helper method to mask sensitive values in property values.
+     * Consistently masks all values to prevent information disclosure.
+     * For values longer than 8 characters, shows first 4 and last 4 characters.
+     * For shorter values, completely masks them.
+     */
+    private String maskSensitiveValue(String value) {
+        if (value == null || value.length() <= 8) {
+            return "***";
+        }
+        // Show first 4 and last 4 characters, mask the middle
+        int len = value.length();
+        return value.substring(0, 4) + "***" + value.substring(len - 4);
+    }
 
     /**
      * Simple ping endpoint to verify service availability.
