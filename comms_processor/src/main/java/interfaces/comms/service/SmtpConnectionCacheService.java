@@ -167,7 +167,7 @@ public class SmtpConnectionCacheService {
      */
     @Schedule(hour = "*", minute = "*", second = "0", persistent = false)
     public void cleanupIdleConnections() {
-        int removedCount = 0;
+        java.util.concurrent.atomic.AtomicInteger removedCount = new java.util.concurrent.atomic.AtomicInteger(0);
         
         // Use iterator for safe removal during iteration
         for (String key : new ArrayList<>(connectionCache.keySet())) {
@@ -176,19 +176,16 @@ public class SmtpConnectionCacheService {
                 if (idleTime > IDLE_TIMEOUT_SECONDS) {
                     logger.info("Closing idle SMTP connection: " + k + " (idle for " + idleTime + " seconds)");
                     info.close();
+                    removedCount.incrementAndGet();
                     return null; // Remove from cache
                 }
                 return info; // Keep in cache
             });
-            
-            // Check if removed
-            if (!connectionCache.containsKey(key)) {
-                removedCount++;
-            }
         }
         
-        if (removedCount > 0) {
-            logger.info("Cleaned up " + removedCount + " idle SMTP connections");
+        int removed = removedCount.get();
+        if (removed > 0) {
+            logger.info("Cleaned up " + removed + " idle SMTP connections");
         }
     }
     

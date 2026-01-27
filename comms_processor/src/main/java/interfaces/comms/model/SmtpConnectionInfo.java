@@ -4,9 +4,11 @@ import jakarta.mail.Transport;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Model class to store SMTP connection information and statistics.
+ * Thread-safe for concurrent access.
  */
 public class SmtpConnectionInfo {
     private static final long SECONDS_PER_DAY = 86400;
@@ -16,9 +18,10 @@ public class SmtpConnectionInfo {
     private final String host;
     private final String username;
     private final Transport transport;
-    private Instant lastUsedTime;
+    private volatile Instant lastUsedTime;
     private final Instant createdTime;
     private final List<Instant> usageHistory;
+    private final Object lock = new Object();
     
     public SmtpConnectionInfo(String host, String username, Transport transport) {
         this.host = host;
@@ -60,25 +63,27 @@ public class SmtpConnectionInfo {
     }
     
     public List<Instant> getUsageHistory() {
-        return new ArrayList<>(usageHistory);
+        synchronized (lock) {
+            return new ArrayList<>(usageHistory);
+        }
     }
     
     public void updateLastUsed() {
-        this.lastUsedTime = Instant.now();
-        this.usageHistory.add(this.lastUsedTime);
-        
-        // Trim history if it grows too large
-        if (usageHistory.size() > MAX_USAGE_HISTORY_SIZE) {
-            // Keep only recent entries (last day + buffer)
-            Instant cutoff = Instant.now().minusSeconds(SECONDS_PER_DAY + 3600);
-            List<Instant> recentHistory = new ArrayList<>();
-            for (Instant time : usageHistory) {
-                if (time.isAfter(cutoff)) {
-                    recentHistory.add(time);
-                }
+        Instant now = Instant.now();
+        synchronized (lock) {
+            this.lastUsedTime = now;
+            this.usageHistory.add(now);
+            
+            // Trim history if it grows too large
+            if (usageHistory.size() > MAX_USAGE_HISTORY_SIZE) {
+                // Keep only recent entries (last day + buffer)
+                Instant cutoff = now.minusSeconds(SECONDS_PER_DAY + 3600);
+                List<Instant> recentHistory = usageHistory.stream()
+                        .filter(time -> time.isAfter(cutoff))
+                        .collect(Collectors.toList());
+                usageHistory.clear();
+                usageHistory.addAll(recentHistory);
             }
-            usageHistory.clear();
-            usageHistory.addAll(recentHistory);
         }
     }
     
@@ -106,8 +111,10 @@ public class SmtpConnectionInfo {
     
     public int getUsageCountLastDay() {
         Instant dayAgo = Instant.now().minusSeconds(SECONDS_PER_DAY);
-        return (int) usageHistory.stream()
-                .filter(time -> time.isAfter(dayAgo))
-                .count();
+        synchronized (lock) {
+            return (int) usageHistory.stream()
+                    .filter(time -> time.isAfter(dayAgo))
+                    .count();
+        }
     }
 }
