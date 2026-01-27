@@ -275,6 +275,49 @@ curl -X POST http://localhost:8080/comms_processor/api/imap/test \
 - Supports TLS 1.2 and TLS 1.3 encryption
 - Default connection timeout is 10 seconds
 - Standard IMAPS port 993 is used
+- **Connections are cached** for improved performance (see Connection Cache section below)
+
+#### 2. IMAPS Connection Cache Status
+
+**Endpoint:** `GET /api/imap/status`
+
+**Description:** Returns the status of the IMAPS connection cache, including all open connections and their statistics for the last day.
+
+**Response Example:**
+```json
+{
+  "cacheStats": {
+    "totalConnections": 5,
+    "maxConnections": 50,
+    "activeConnections": 5
+  },
+  "connections": [
+    {
+      "host": "imap.gmail.com",
+      "username": "user@gmail.com",
+      "connected": true,
+      "createdTime": "2026-01-27T11:00:00Z",
+      "lastUsedTime": "2026-01-27T11:05:00Z",
+      "idleTimeSeconds": 120,
+      "usageCountLastDay": 15
+    }
+  ],
+  "timestamp": 1706012345678
+}
+```
+
+**Usage Example:**
+```bash
+curl http://localhost:8080/comms_processor/api/imap/status
+```
+
+**Connection Cache Behavior:**
+- **Maximum connections**: 50 (default, configurable)
+- **Idle timeout**: 5 minutes - connections not used for 5 minutes are automatically closed
+- **Cleanup schedule**: Runs every minute to close idle connections
+- **Connection reuse**: Existing connections are reused when the same host/username is requested
+- **Eviction policy**: When cache is full, the least recently used connection is closed
+- **Statistics tracking**: Usage count and last access time for each connection tracked for the last 24 hours
 
 ## Testing
 

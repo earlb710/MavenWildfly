@@ -1,14 +1,17 @@
 package interfaces.comms.service;
 
+import interfaces.comms.model.ImapConnectionInfo;
 import jakarta.mail.Session;
 import jakarta.mail.Store;
 import javax.ejb.Stateless;
+import javax.inject.Inject;
 import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
  * Service to test IMAPS server connections with TLS encryption.
  * Provides functionality to verify IMAPS server connectivity using host, username, and password.
+ * Uses connection caching for improved performance.
  */
 @Stateless
 public class ImapConnectionService {
@@ -17,10 +20,13 @@ public class ImapConnectionService {
     
     private static final String IMAPS_PROTOCOL = "imaps";
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
+    
+    @Inject
+    private ImapConnectionCacheService cacheService;
 
     /**
      * Tests connection to an IMAPS server using the provided credentials.
-     * Uses TLS 1.2+ for secure connections.
+     * Uses TLS 1.2+ for secure connections and caches connections for reuse.
      * 
      * @param host The IMAPS server hostname or IP address
      * @param username The username for authentication
@@ -28,8 +34,6 @@ public class ImapConnectionService {
      * @return true if connection is successful, false otherwise
      */
     public boolean testConnection(String host, String username, String password) {
-        Store store = null;
-        
         try {
             // Validate input parameters
             if (host == null || host.trim().isEmpty()) {
@@ -48,36 +52,13 @@ public class ImapConnectionService {
             }
             
             // Configure IMAPS properties with latest encryption
-            Properties props = new Properties();
+            Properties props = getImapProperties(host);
             
-            // Enable IMAPS protocol
-            props.setProperty("mail.store.protocol", IMAPS_PROTOCOL);
-            
-            // Configure connection settings
-            props.setProperty("mail.imaps.host", host);
-            props.setProperty("mail.imaps.port", "993"); // Standard IMAPS port
-            props.setProperty("mail.imaps.connectiontimeout", String.valueOf(DEFAULT_TIMEOUT));
-            props.setProperty("mail.imaps.timeout", String.valueOf(DEFAULT_TIMEOUT));
-            
-            // Enable TLS/SSL with latest encryption
-            props.setProperty("mail.imaps.ssl.enable", "true");
-            props.setProperty("mail.imaps.ssl.protocols", "TLSv1.2 TLSv1.3"); // Use TLS 1.2 and 1.3
-            props.setProperty("mail.imaps.ssl.checkserveridentity", "true");
-            // Note: In production, configure proper certificate trust store instead of trusting all
-            // For testing purposes only - this accepts all certificates
-            props.setProperty("mail.imaps.ssl.trust", "*");
-            
-            // Create session and store
-            Session session = Session.getInstance(props, null);
-            session.setDebug(false); // Set to true for debugging
-            
-            store = session.getStore(IMAPS_PROTOCOL);
-            
-            // Attempt to connect
+            // Get or create cached connection
             logger.info("Attempting IMAPS connection to: " + host + " with user: " + username);
-            store.connect(host, username, password);
+            ImapConnectionInfo connectionInfo = cacheService.getOrCreateConnection(host, username, password, props);
             
-            if (store.isConnected()) {
+            if (connectionInfo.isConnected()) {
                 logger.info("IMAPS connection successful to: " + host);
                 return true;
             } else {
@@ -89,16 +70,35 @@ public class ImapConnectionService {
             logger.severe("IMAPS connection failed: " + e.getMessage());
             logger.fine("Exception details: " + e.getClass().getName());
             return false;
-        } finally {
-            // Always close the store connection
-            if (store != null) {
-                try {
-                    store.close();
-                    logger.fine("IMAPS store connection closed");
-                } catch (Exception e) {
-                    logger.warning("Error closing IMAPS store: " + e.getMessage());
-                }
-            }
         }
+    }
+    
+    /**
+     * Creates IMAPS connection properties with TLS encryption settings.
+     * 
+     * @param host The IMAPS server hostname
+     * @return Properties configured for IMAPS connection
+     */
+    private Properties getImapProperties(String host) {
+        Properties props = new Properties();
+        
+        // Enable IMAPS protocol
+        props.setProperty("mail.store.protocol", IMAPS_PROTOCOL);
+        
+        // Configure connection settings
+        props.setProperty("mail.imaps.host", host);
+        props.setProperty("mail.imaps.port", "993"); // Standard IMAPS port
+        props.setProperty("mail.imaps.connectiontimeout", String.valueOf(DEFAULT_TIMEOUT));
+        props.setProperty("mail.imaps.timeout", String.valueOf(DEFAULT_TIMEOUT));
+        
+        // Enable TLS/SSL with latest encryption
+        props.setProperty("mail.imaps.ssl.enable", "true");
+        props.setProperty("mail.imaps.ssl.protocols", "TLSv1.2 TLSv1.3"); // Use TLS 1.2 and 1.3
+        props.setProperty("mail.imaps.ssl.checkserveridentity", "true");
+        // Note: In production, configure proper certificate trust store instead of trusting all
+        // For testing purposes only - this accepts all certificates
+        props.setProperty("mail.imaps.ssl.trust", "*");
+        
+        return props;
     }
 }
