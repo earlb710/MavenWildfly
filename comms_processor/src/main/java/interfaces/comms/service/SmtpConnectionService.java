@@ -39,6 +39,9 @@ public class SmtpConnectionService {
     @Inject
     private SmtpConnectionCacheService cacheService;
     
+    @Inject
+    private EmailSenderStatsService statsService;
+    
     public SmtpConnectionService() {
         // Read system properties for batch control
         maxBatchSize = getSystemPropertyInt("email-sender.maxBatchSize", DEFAULT_MAX_BATCH_SIZE);
@@ -243,6 +246,9 @@ public class SmtpConnectionService {
             // Increment email counter
             connectionInfo.incrementEmailsSent();
             
+            // Record success in stats
+            statsService.recordSuccess(1, message.getSize() > 0 ? message.getSize() : body.length());
+            
             long sendTime = System.currentTimeMillis() - startTime;
             
             result.put("success", true);
@@ -265,6 +271,15 @@ public class SmtpConnectionService {
             
         } catch (Exception e) {
             logger.severe("Failed to send text email - from: " + fromAddress + ", to: " + toAddress + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            context.put("fromAddress", fromAddress);
+            context.put("toAddress", toAddress);
+            context.put("subject", subject);
+            statsService.recordError("sendTextMessage", smtpHost, smtpUser, e.getMessage(), 
+                    e.getClass().getName() + ": " + e.getMessage(), context);
+            
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -329,6 +344,10 @@ public class SmtpConnectionService {
             // Increment email counter
             connectionInfo.incrementEmailsSent();
             
+            // Record success in stats
+            int dataSize = (Integer) sendResult.get("dataSize");
+            statsService.recordSuccess(1, dataSize);
+            
             long sendTime = System.currentTimeMillis() - startTime;
             
             result.put("success", true);
@@ -350,6 +369,13 @@ public class SmtpConnectionService {
             
         } catch (Exception e) {
             logger.severe("Failed to send .eml email - host: " + smtpHost + ", user: " + smtpUser + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            context.put("dataLength", data != null ? data.length() : 0);
+            statsService.recordError("sendEmail", smtpHost, smtpUser, e.getMessage(), 
+                    e.getClass().getName() + ": " + e.getMessage(), context);
+            
             result.put("success", false);
             result.put("error", e.getMessage());
         }
@@ -460,6 +486,13 @@ public class SmtpConnectionService {
                     emailResult.put("success", false);
                     emailResult.put("error", "data at index " + i + " is empty");
                     failureCount++;
+                    
+                    // Record error in stats
+                    Map<String, Object> errorContext = new HashMap<>();
+                    errorContext.put("batchIndex", i);
+                    errorContext.put("totalBatchSize", dataArray.size());
+                    statsService.recordError("sendEmails", smtpHost, smtpUser, "Empty data", 
+                            "Email at index " + i + " has empty data", errorContext);
                 } else {
                     Map<String, Object> sendResult = processAndSendEmail(smtpHost, connectionInfo, data);
                     emailResult.put("success", sendResult.get("success"));
@@ -478,6 +511,14 @@ public class SmtpConnectionService {
                         emailResult.put("error", sendResult.get("error"));
                         failureCount++;
                         logger.warning("Email at index " + i + " failed - error: " + sendResult.get("error"));
+                        
+                        // Record error in stats
+                        Map<String, Object> errorContext = new HashMap<>();
+                        errorContext.put("batchIndex", i);
+                        errorContext.put("totalBatchSize", dataArray.size());
+                        statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                                String.valueOf(sendResult.get("error")), 
+                                "Failed to send email at index " + i, errorContext);
                     }
                 }
                 
@@ -485,6 +526,11 @@ public class SmtpConnectionService {
             }
             
             long sendTime = System.currentTimeMillis() - startTime;
+            
+            // Record successful emails in stats
+            if (successCount > 0) {
+                statsService.recordSuccess(successCount, totalDataSize);
+            }
             
             result.put("success", failureCount == 0);
             result.put("smtpHost", smtpHost);
@@ -510,6 +556,13 @@ public class SmtpConnectionService {
             
         } catch (Exception e) {
             logger.severe("Failed to send batch of emails - host: " + smtpHost + ", user: " + smtpUser + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            context.put("batchSize", dataArray != null ? dataArray.size() : 0);
+            statsService.recordError("sendEmails", smtpHost, smtpUser, e.getMessage(), 
+                    e.getClass().getName() + ": " + e.getMessage(), context);
+            
             result.put("success", false);
             result.put("error", e.getMessage());
         }

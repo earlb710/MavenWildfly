@@ -25,6 +25,9 @@ public class ImapConnectionService {
     
     @Inject
     private ImapConnectionCacheService cacheService;
+    
+    @Inject
+    private EmailReaderStatsService statsService;
 
     /**
      * Tests connection to an IMAPS server using the provided credentials.
@@ -214,6 +217,9 @@ public class ImapConnectionService {
             
             int messageCount = folder.getMessageCount();
             
+            // Record success in stats (count, size=0 since we're just counting)
+            statsService.recordSuccess(messageCount, 0);
+            
             logger.info("Mailbox count retrieved successfully - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + ", count: " + messageCount);
             
             result.put("success", true);
@@ -224,6 +230,12 @@ public class ImapConnectionService {
             
         } catch (Exception e) {
             logger.severe("Failed to get mailbox count - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            statsService.recordError("getMailboxCount", mailboxHost, mailboxUser, mailboxFolder, 
+                    e.getMessage(), e.getClass().getName() + ": " + e.getMessage(), context);
+            
             result.put("success", false);
             result.put("error", e.getMessage());
         } finally {
@@ -324,6 +336,9 @@ public class ImapConnectionService {
             logger.info("Mailbox stats retrieved successfully - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + 
                        ", messageCount: " + messageCount + ", totalSize: " + totalSize + " bytes");
             
+            // Record success in stats
+            statsService.recordSuccess(messageCount, totalSize);
+            
             result.put("success", true);
             result.put("mailboxHost", mailboxHost);
             result.put("mailboxUser", mailboxUser);
@@ -337,6 +352,12 @@ public class ImapConnectionService {
             
         } catch (Exception e) {
             logger.severe("Failed to get mailbox stats - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + mailboxFolder + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            statsService.recordError("getMailboxStats", mailboxHost, mailboxUser, mailboxFolder, 
+                    e.getMessage(), e.getClass().getName() + ": " + e.getMessage(), context);
+            
             result.put("success", false);
             result.put("error", e.getMessage());
         } finally {

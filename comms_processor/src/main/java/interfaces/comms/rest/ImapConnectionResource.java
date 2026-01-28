@@ -29,6 +29,9 @@ public class ImapConnectionResource {
     
     @Inject
     private ImapConnectionCacheService cacheService;
+    
+    @Inject
+    private interfaces.comms.service.EmailReaderStatsService statsService;
 
     /**
      * Tests IMAPS connection with provided credentials.
@@ -258,6 +261,32 @@ public class ImapConnectionResource {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Failed to retrieve connection status: " + e.getMessage());
+            errorResponse.put("timestamp", System.currentTimeMillis());
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                          .entity(errorResponse)
+                          .build();
+        }
+    }
+    
+    /**
+     * Gets email reader statistics.
+     * Returns total number of emails read, total size, error count, and recent errors.
+     * 
+     * @return Response with email reader statistics
+     */
+    @GET
+    @Path("/stats")
+    public Response getStats() {
+        try {
+            Map<String, Object> stats = statsService.getStatsMap();
+            stats.put("timestamp", System.currentTimeMillis());
+            
+            return Response.ok(stats).build();
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "Failed to retrieve email reader statistics: " + e.getMessage());
             errorResponse.put("timestamp", System.currentTimeMillis());
             
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
