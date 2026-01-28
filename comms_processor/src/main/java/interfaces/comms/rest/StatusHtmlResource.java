@@ -327,6 +327,12 @@ public class StatusHtmlResource {
             html.append("            <div class=\"endpoint-desc\">Returns the status of the IMAPS connection cache</div>\n");
             html.append("        </div>\n");
             
+            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("            <span class=\"endpoint-method\">GET</span>\n");
+            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/stats\">/api/imap/stats</a></span>\n");
+            html.append("            <div class=\"endpoint-desc\">Returns email reader statistics (total emails read, size, errors, and last 20 errors)</div>\n");
+            html.append("        </div>\n");
+            
             html.append("        <h3>SMTP Endpoints</h3>\n");
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
@@ -467,6 +473,12 @@ public class StatusHtmlResource {
             html.append("            <span class=\"endpoint-method\">GET</span>\n");
             html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/status\">/api/smtp/status</a></span>\n");
             html.append("            <div class=\"endpoint-desc\">Returns the status of the SMTP connection cache</div>\n");
+            html.append("        </div>\n");
+            
+            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("            <span class=\"endpoint-method\">GET</span>\n");
+            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats\">/api/smtp/stats</a></span>\n");
+            html.append("            <div class=\"endpoint-desc\">Returns email sender statistics (total emails sent, size, errors, and last 20 errors)</div>\n");
             html.append("        </div>\n");
             
             // Properties Section

@@ -117,6 +117,12 @@ public class StatusResource {
             imapStatus.put("description", "Returns the status of the IMAPS connection cache");
             statusEndpoints.add(imapStatus);
             
+            Map<String, String> imapStats = new HashMap<>();
+            imapStats.put("path", "/api/imap/stats");
+            imapStats.put("method", "GET");
+            imapStats.put("description", "Returns email reader statistics (total emails read, size, errors, and last 20 errors)");
+            statusEndpoints.add(imapStats);
+            
             // SMTP endpoints
             Map<String, String> smtpOpen = new HashMap<>();
             smtpOpen.put("path", "/api/smtp/open");
@@ -147,6 +153,12 @@ public class StatusResource {
             smtpStatus.put("method", "GET");
             smtpStatus.put("description", "Returns the status of the SMTP connection cache");
             statusEndpoints.add(smtpStatus);
+            
+            Map<String, String> smtpStats = new HashMap<>();
+            smtpStats.put("path", "/api/smtp/stats");
+            smtpStats.put("method", "GET");
+            smtpStats.put("description", "Returns email sender statistics (total emails sent, size, errors, and last 20 errors)");
+            statusEndpoints.add(smtpStats);
             
             response.put("availableEndpoints", statusEndpoints);
             response.put("totalEndpoints", statusEndpoints.size());
