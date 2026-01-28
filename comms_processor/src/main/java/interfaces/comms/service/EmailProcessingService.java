@@ -66,6 +66,7 @@ public class EmailProcessingService {
      * @param threadCount Number of threads to use (default: 4, max: 10)
      * @param maxMessages Maximum number of messages to process (0 = all)
      * @param processNewest If true, process newest messages first; otherwise oldest first
+     * @param removeMessage If true, delete messages after successful processing (default: false)
      * @return Map containing processing results
      */
     public Map<String, Object> processMessages(
@@ -76,7 +77,8 @@ public class EmailProcessingService {
             EmailProcessor processor,
             Integer threadCount,
             Integer maxMessages,
-            Boolean processNewest) {
+            Boolean processNewest,
+            Boolean removeMessage) {
         
         Map<String, Object> result = new HashMap<>();
         
@@ -126,9 +128,14 @@ public class EmailProcessingService {
             processNewest = false; // Default to oldest first
         }
         
+        if (removeMessage == null) {
+            removeMessage = false; // Default to not removing messages
+        }
+        
         logger.info("Starting multi-threaded email processing - host: " + mailboxHost + 
                    ", user: " + mailboxUser + ", folder: " + mailboxFolder + 
-                   ", threads: " + threadCount + ", maxMessages: " + maxMessages);
+                   ", threads: " + threadCount + ", maxMessages: " + maxMessages +
+                   ", removeMessage: " + removeMessage);
         
         // Get total message count using a temporary connection
         Folder folder = null;
@@ -190,6 +197,7 @@ public class EmailProcessingService {
         final String finalMailboxPassword = mailboxPassword;
         final String finalMailboxFolder = mailboxFolder;
         final EmailProcessor finalProcessor = processor;
+        final Boolean finalRemoveMessage = removeMessage;
         
         // Submit tasks for each message range using WildFly's managed executor service
         List<Future<Void>> futures = new ArrayList<>();
@@ -200,7 +208,7 @@ public class EmailProcessingService {
             Callable<Void> task = () -> {
                 processMessageRange(
                         finalMailboxHost, finalMailboxUser, finalMailboxPassword, finalMailboxFolder,
-                        startMsg, endMsg, finalProcessor, processingResult);
+                        startMsg, endMsg, finalProcessor, processingResult, finalRemoveMessage);
                 return null;
             };
             
@@ -251,7 +259,8 @@ public class EmailProcessingService {
             int startMsg,
             int endMsg,
             EmailProcessor processor,
-            EmailProcessingResult processingResult) {
+            EmailProcessingResult processingResult,
+            boolean removeMessage) {
         
         Folder folder = null;
         Store store = null;
@@ -265,7 +274,9 @@ public class EmailProcessingService {
             store.connect(mailboxHost, mailboxUser, mailboxPassword);
             
             folder = store.getFolder(mailboxFolder);
-            folder.open(Folder.READ_ONLY);
+            // Open folder in READ_WRITE mode if we need to delete messages, otherwise READ_ONLY
+            int openMode = removeMessage ? Folder.READ_WRITE : Folder.READ_ONLY;
+            folder.open(openMode);
             
             logger.info("Thread " + Thread.currentThread().getName() + 
                        " processing messages " + startMsg + " to " + endMsg);
@@ -291,9 +302,23 @@ public class EmailProcessingService {
                     // Process the message
                     Map<String, Object> processResult = processor.processEmail(emailMessage);
                     
+                    // Check if processing was successful
+                    Boolean success = (Boolean) processResult.get("success");
+                    
                     // Record success
                     processingResult.recordSuccess(messageId != null ? messageId : "msg-" + message.getMessageNumber(), 
                             processResult);
+                    
+                    // Delete message if removeMessage is true and processing was successful
+                    if (removeMessage && Boolean.TRUE.equals(success)) {
+                        try {
+                            message.setFlag(jakarta.mail.Flags.Flag.DELETED, true);
+                            processingResult.recordDeleted(messageId != null ? messageId : "msg-" + message.getMessageNumber());
+                            logger.fine("Marked message " + messageId + " for deletion");
+                        } catch (Exception e) {
+                            logger.warning("Failed to delete message " + messageId + ": " + e.getMessage());
+                        }
+                    }
                     
                 } catch (Exception e) {
                     logger.warning("Failed to process message " + 
@@ -316,7 +341,12 @@ public class EmailProcessingService {
             // Close folder and store
             if (folder != null && folder.isOpen()) {
                 try {
-                    folder.close(false);
+                    // Expunge to permanently delete marked messages
+                    if (removeMessage) {
+                        folder.close(true); // true = expunge deleted messages
+                    } else {
+                        folder.close(false);
+                    }
                 } catch (Exception e) {
                     logger.warning("Error closing folder: " + e.getMessage());
                 }

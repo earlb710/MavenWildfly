@@ -17,9 +17,11 @@ public class EmailProcessingResult {
     private final AtomicInteger processedCount = new AtomicInteger(0);
     private final AtomicInteger successCount = new AtomicInteger(0);
     private final AtomicInteger errorCount = new AtomicInteger(0);
+    private final AtomicInteger deletedCount = new AtomicInteger(0);
     
     // Thread-safe collections for storing results
     private final Map<String, Map<String, Object>> messageResults = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> deletedMessageIds = new ConcurrentHashMap<>();
     private final List<Map<String, Object>> errors = new ArrayList<>();
     
     private final long startTime;
@@ -65,6 +67,16 @@ public class EmailProcessingResult {
     }
     
     /**
+     * Records a deleted message.
+     * 
+     * @param messageId The unique identifier for the deleted message
+     */
+    public void recordDeleted(String messageId) {
+        deletedCount.incrementAndGet();
+        deletedMessageIds.put(messageId, true);
+    }
+    
+    /**
      * Marks the processing as complete and records the end time.
      */
     public void markComplete() {
@@ -82,6 +94,8 @@ public class EmailProcessingResult {
         result.put("processedCount", processedCount.get());
         result.put("successCount", successCount.get());
         result.put("errorCount", errorCount.get());
+        result.put("deletedCount", deletedCount.get());
+        result.put("deletedMessageIds", new ArrayList<>(deletedMessageIds.keySet()));
         result.put("processingTimeMs", endTime > 0 ? endTime - startTime : System.currentTimeMillis() - startTime);
         result.put("messageResults", messageResults);
         result.put("errors", errors);
@@ -99,6 +113,10 @@ public class EmailProcessingResult {
     
     public int getErrorCount() {
         return errorCount.get();
+    }
+    
+    public int getDeletedCount() {
+        return deletedCount.get();
     }
     
     public Map<String, Map<String, Object>> getMessageResults() {

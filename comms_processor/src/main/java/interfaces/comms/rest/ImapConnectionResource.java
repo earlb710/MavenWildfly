@@ -684,6 +684,7 @@ public class ImapConnectionResource {
         Integer maxMessages = request.get("maxMessages") != null ? 
                 ((Number) request.get("maxMessages")).intValue() : null;
         Boolean processNewest = (Boolean) request.get("processNewest");
+        Boolean removeMessage = (Boolean) request.get("removeMessage");
         
         // Validate required parameters
         if (processorClassName == null || processorClassName.trim().isEmpty()) {
@@ -727,7 +728,7 @@ public class ImapConnectionResource {
         // Call the processing service
         Map<String, Object> result = emailProcessingService.processMessages(
                 mailboxHost, mailboxUser, mailboxPassword, mailboxFolder,
-                processor, threadCount, maxMessages, processNewest);
+                processor, threadCount, maxMessages, processNewest, removeMessage);
         
         if ((Boolean) result.get("success")) {
             return Response.ok(result).build();
