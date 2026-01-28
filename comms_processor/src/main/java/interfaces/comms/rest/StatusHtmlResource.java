@@ -333,6 +333,18 @@ public class StatusHtmlResource {
             html.append("            <div class=\"endpoint-desc\">Returns email reader statistics (total emails read, size, errors, and last 20 errors)</div>\n");
             html.append("        </div>\n");
             
+            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("            <span class=\"endpoint-method\">GET</span>\n");
+            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/status.html\">/api/imap/status.html</a></span>\n");
+            html.append("            <div class=\"endpoint-desc\">HTML version of IMAPS connection cache status for browser viewing</div>\n");
+            html.append("        </div>\n");
+            
+            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("            <span class=\"endpoint-method\">GET</span>\n");
+            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/stats.html\">/api/imap/stats.html</a></span>\n");
+            html.append("            <div class=\"endpoint-desc\">HTML version of email reader statistics for browser viewing</div>\n");
+            html.append("        </div>\n");
+            
             html.append("        <h3>SMTP Endpoints</h3>\n");
             html.append("        <div class=\"endpoint-card\">\n");
             html.append("            <span class=\"endpoint-method post\">POST</span>\n");
@@ -479,6 +491,18 @@ public class StatusHtmlResource {
             html.append("            <span class=\"endpoint-method\">GET</span>\n");
             html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats\">/api/smtp/stats</a></span>\n");
             html.append("            <div class=\"endpoint-desc\">Returns email sender statistics (total emails sent, size, errors, and last 20 errors)</div>\n");
+            html.append("        </div>\n");
+            
+            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("            <span class=\"endpoint-method\">GET</span>\n");
+            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/status.html\">/api/smtp/status.html</a></span>\n");
+            html.append("            <div class=\"endpoint-desc\">HTML version of SMTP connection cache status for browser viewing</div>\n");
+            html.append("        </div>\n");
+            
+            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("            <span class=\"endpoint-method\">GET</span>\n");
+            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats.html\">/api/smtp/stats.html</a></span>\n");
+            html.append("            <div class=\"endpoint-desc\">HTML version of email sender statistics for browser viewing</div>\n");
             html.append("        </div>\n");
             
             // Properties Section

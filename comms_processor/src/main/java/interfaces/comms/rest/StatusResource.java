@@ -123,6 +123,18 @@ public class StatusResource {
             imapStats.put("description", "Returns email reader statistics (total emails read, size, errors, and last 20 errors)");
             statusEndpoints.add(imapStats);
             
+            Map<String, String> imapStatusHtml = new HashMap<>();
+            imapStatusHtml.put("path", "/api/imap/status.html");
+            imapStatusHtml.put("method", "GET");
+            imapStatusHtml.put("description", "HTML version of IMAPS connection cache status for browser viewing");
+            statusEndpoints.add(imapStatusHtml);
+            
+            Map<String, String> imapStatsHtml = new HashMap<>();
+            imapStatsHtml.put("path", "/api/imap/stats.html");
+            imapStatsHtml.put("method", "GET");
+            imapStatsHtml.put("description", "HTML version of email reader statistics for browser viewing");
+            statusEndpoints.add(imapStatsHtml);
+            
             // SMTP endpoints
             Map<String, String> smtpOpen = new HashMap<>();
             smtpOpen.put("path", "/api/smtp/open");
@@ -159,6 +171,18 @@ public class StatusResource {
             smtpStats.put("method", "GET");
             smtpStats.put("description", "Returns email sender statistics (total emails sent, size, errors, and last 20 errors)");
             statusEndpoints.add(smtpStats);
+            
+            Map<String, String> smtpStatusHtml = new HashMap<>();
+            smtpStatusHtml.put("path", "/api/smtp/status.html");
+            smtpStatusHtml.put("method", "GET");
+            smtpStatusHtml.put("description", "HTML version of SMTP connection cache status for browser viewing");
+            statusEndpoints.add(smtpStatusHtml);
+            
+            Map<String, String> smtpStatsHtml = new HashMap<>();
+            smtpStatsHtml.put("path", "/api/smtp/stats.html");
+            smtpStatsHtml.put("method", "GET");
+            smtpStatsHtml.put("description", "HTML version of email sender statistics for browser viewing");
+            statusEndpoints.add(smtpStatsHtml);
             
             response.put("availableEndpoints", statusEndpoints);
             response.put("totalEndpoints", statusEndpoints.size());
