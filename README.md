@@ -653,6 +653,38 @@ curl http://localhost:8080/comms_processor/api/imap/stats
 - **Total errors**: Count of all errors encountered during email reading operations
 - **Recent errors**: Last 20 errors with full details including timestamp, operation type, host, username, folder, error message, error details, and additional context
 
+#### 8. IMAPS Connection Status (HTML)
+
+**Endpoint:** `GET /api/imap/status.html`
+
+**Description:** Browser-friendly HTML version of IMAPS connection cache status.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/imap/status.html`
+
+**Features:**
+- Visual summary of cache statistics
+- Interactive table showing all active connections
+- Connection status indicators (connected/disconnected)
+- Clickable navigation links
+- Auto-refresh option
+
+#### 9. IMAPS Email Reader Statistics (HTML)
+
+**Endpoint:** `GET /api/imap/stats.html`
+
+**Description:** Browser-friendly HTML version of email reader statistics.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/imap/stats.html`
+
+**Features:**
+- Large visual display of key statistics
+- Detailed error table with timestamps
+- Human-readable size formatting (bytes to KB/MB/GB)
+- Clickable navigation to related pages
+- Consistent styling with other HTML pages
+
 ### SMTP Connection Endpoints
 
 Base URL: `http://localhost:8080/comms_processor/api/smtp`
@@ -1068,6 +1100,38 @@ curl http://localhost:8080/comms_processor/api/smtp/stats
 - **Total size in bytes**: Cumulative size of all emails sent
 - **Total errors**: Count of all errors encountered during email sending operations (including auto-reconnect failures)
 - **Recent errors**: Last 20 errors with full details including timestamp, operation type, host, username, error message, error details, and additional context (e.g., batch index, email addresses)
+
+#### 7. SMTP Connection Status (HTML)
+
+**Endpoint:** `GET /api/smtp/status.html`
+
+**Description:** Browser-friendly HTML version of SMTP connection cache status.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/smtp/status.html`
+
+**Features:**
+- Visual summary of cache statistics
+- Interactive table showing all active connections
+- Connection status indicators (connected/disconnected)
+- Clickable navigation links
+- Auto-refresh option
+
+#### 8. SMTP Email Sender Statistics (HTML)
+
+**Endpoint:** `GET /api/smtp/stats.html`
+
+**Description:** Browser-friendly HTML version of email sender statistics.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/smtp/stats.html`
+
+**Features:**
+- Large visual display of key statistics
+- Detailed error table with timestamps
+- Human-readable size formatting (bytes to KB/MB/GB)
+- Clickable navigation to related pages
+- Consistent styling with other HTML pages
 
 ## System Properties
 
