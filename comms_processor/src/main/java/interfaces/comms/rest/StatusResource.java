@@ -111,6 +111,18 @@ public class StatusResource {
             imapMailboxStats.put("description", "Returns detailed statistics for emails in a folder");
             statusEndpoints.add(imapMailboxStats);
             
+            Map<String, String> imapOldestMessage = new HashMap<>();
+            imapOldestMessage.put("path", "/api/imap/oldestMessage");
+            imapOldestMessage.put("method", "POST");
+            imapOldestMessage.put("description", "Returns the oldest message from a folder by received date");
+            statusEndpoints.add(imapOldestMessage);
+            
+            Map<String, String> imapNewestMessage = new HashMap<>();
+            imapNewestMessage.put("path", "/api/imap/newestMessage");
+            imapNewestMessage.put("method", "POST");
+            imapNewestMessage.put("description", "Returns the newest message from a folder by received date");
+            statusEndpoints.add(imapNewestMessage);
+            
             Map<String, String> imapStatus = new HashMap<>();
             imapStatus.put("path", "/api/imap/status");
             imapStatus.put("method", "GET");
