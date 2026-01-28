@@ -123,6 +123,12 @@ public class StatusResource {
             imapNewestMessage.put("description", "Returns the newest message from a folder by received date");
             statusEndpoints.add(imapNewestMessage);
             
+            Map<String, String> imapProcessMessages = new HashMap<>();
+            imapProcessMessages.put("path", "/api/imap/processMessages");
+            imapProcessMessages.put("method", "POST");
+            imapProcessMessages.put("description", "Process messages from a mailbox using multiple threads and a custom EmailProcessor implementation");
+            statusEndpoints.add(imapProcessMessages);
+            
             Map<String, String> imapStatus = new HashMap<>();
             imapStatus.put("path", "/api/imap/status");
             imapStatus.put("method", "GET");
