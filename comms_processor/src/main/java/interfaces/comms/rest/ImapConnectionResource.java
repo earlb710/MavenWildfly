@@ -235,6 +235,90 @@ public class ImapConnectionResource {
     }
     
     /**
+     * Gets the oldest message from a folder.
+     * Requires an existing cached connection (use /api/imap/open first).
+     * 
+     * Request body example:
+     * {
+     *   "mailboxHost": "imap.gmail.com",
+     *   "mailboxUser": "user@gmail.com",
+     *   "mailboxFolder": "INBOX"  // optional, defaults to INBOX
+     * }
+     * 
+     * @param request Map containing mailboxHost, mailboxUser, and optional mailboxFolder
+     * @return Response with oldest message details
+     */
+    @POST
+    @Path("/oldestMessage")
+    public Response getOldestMessage(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String mailboxHost = request.get("mailboxHost");
+        String mailboxUser = request.get("mailboxUser");
+        String mailboxFolder = request.get("mailboxFolder"); // Optional, defaults to INBOX
+        
+        Map<String, Object> result = imapConnectionService.getOldestMessage(mailboxHost, mailboxUser, mailboxFolder);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(result)
+                    .build();
+        }
+    }
+    
+    /**
+     * Gets the newest message from a folder.
+     * Requires an existing cached connection (use /api/imap/open first).
+     * 
+     * Request body example:
+     * {
+     *   "mailboxHost": "imap.gmail.com",
+     *   "mailboxUser": "user@gmail.com",
+     *   "mailboxFolder": "INBOX"  // optional, defaults to INBOX
+     * }
+     * 
+     * @param request Map containing mailboxHost, mailboxUser, and optional mailboxFolder
+     * @return Response with newest message details
+     */
+    @POST
+    @Path("/newestMessage")
+    public Response getNewestMessage(Map<String, String> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String mailboxHost = request.get("mailboxHost");
+        String mailboxUser = request.get("mailboxUser");
+        String mailboxFolder = request.get("mailboxFolder"); // Optional, defaults to INBOX
+        
+        Map<String, Object> result = imapConnectionService.getNewestMessage(mailboxHost, mailboxUser, mailboxFolder);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(result)
+                    .build();
+        }
+    }
+    
+    /**
      * Gets the status of the IMAPS connection cache.
      * Shows all open connections and their statistics for the last day.
      * 

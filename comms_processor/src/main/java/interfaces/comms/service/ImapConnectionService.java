@@ -375,6 +375,301 @@ public class ImapConnectionService {
     }
     
     /**
+     * Gets the oldest message from a folder for an existing cached connection.
+     * Connection must already be open/cached, otherwise returns an error.
+     * Returns message metadata including subject, from, to, date, and size.
+     * 
+     * @param mailboxHost The mailbox host
+     * @param mailboxUser The mailbox username
+     * @param mailboxFolder The folder name (default "INBOX")
+     * @return Map containing success status and oldest message details
+     */
+    public Map<String, Object> getOldestMessage(String mailboxHost, String mailboxUser, String mailboxFolder) {
+        Map<String, Object> result = new HashMap<>();
+        jakarta.mail.Folder folder = null;
+        
+        try {
+            logger.info("Attempting to get oldest message - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + (mailboxFolder != null ? mailboxFolder : "INBOX"));
+            
+            // Validate and get connection
+            Map<String, Object> validationResult = validateAndGetConnection(mailboxHost, mailboxUser, mailboxFolder);
+            if (validationResult.containsKey("error")) {
+                return validationResult;
+            }
+            
+            ImapConnectionInfo connectionInfo = (ImapConnectionInfo) validationResult.get("connectionInfo");
+            mailboxFolder = (String) validationResult.get("mailboxFolder");
+            
+            // Get the folder and open it
+            folder = connectionInfo.getStore().getFolder(mailboxFolder);
+            folder.open(jakarta.mail.Folder.READ_ONLY);
+            
+            int messageCount = folder.getMessageCount();
+            
+            if (messageCount == 0) {
+                logger.info("No messages in folder: " + mailboxFolder);
+                result.put("success", true);
+                result.put("mailboxHost", mailboxHost);
+                result.put("mailboxUser", mailboxUser);
+                result.put("mailboxFolder", mailboxFolder);
+                result.put("message", "No messages in folder");
+                result.put("messageCount", 0);
+                return result;
+            }
+            
+            // Find the message with the oldest received date
+            jakarta.mail.Message oldestMessage = null;
+            java.util.Date oldestDate = null;
+            
+            // Process messages in batches to avoid memory issues
+            int batchSize = 100;
+            for (int start = 1; start <= messageCount; start += batchSize) {
+                int end = Math.min(start + batchSize - 1, messageCount);
+                jakarta.mail.Message[] messages = folder.getMessages(start, end);
+                
+                // Fetch message metadata in batch for better performance
+                jakarta.mail.FetchProfile fetchProfile = new jakarta.mail.FetchProfile();
+                fetchProfile.add(jakarta.mail.FetchProfile.Item.ENVELOPE);
+                fetchProfile.add(jakarta.mail.FetchProfile.Item.SIZE);
+                folder.fetch(messages, fetchProfile);
+                
+                for (jakarta.mail.Message message : messages) {
+                    java.util.Date receivedDate = message.getReceivedDate();
+                    if (receivedDate != null) {
+                        if (oldestDate == null || receivedDate.before(oldestDate)) {
+                            oldestDate = receivedDate;
+                            oldestMessage = message;
+                        }
+                    }
+                }
+            }
+            
+            if (oldestMessage == null) {
+                logger.warning("No messages with received date found in folder: " + mailboxFolder);
+                result.put("success", true);
+                result.put("mailboxHost", mailboxHost);
+                result.put("mailboxUser", mailboxUser);
+                result.put("mailboxFolder", mailboxFolder);
+                result.put("message", "No messages with received date found");
+                result.put("messageCount", messageCount);
+                return result;
+            }
+            
+            // Extract message details
+            Map<String, Object> messageDetails = extractMessageDetails(oldestMessage);
+            
+            // Record success in stats (1 message, size from message)
+            statsService.recordSuccess(1, oldestMessage.getSize() > 0 ? oldestMessage.getSize() : 0);
+            
+            logger.info("Oldest message retrieved successfully - host: " + mailboxHost + ", user: " + mailboxUser + 
+                       ", folder: " + mailboxFolder + ", date: " + oldestDate);
+            
+            result.put("success", true);
+            result.put("mailboxHost", mailboxHost);
+            result.put("mailboxUser", mailboxUser);
+            result.put("mailboxFolder", mailboxFolder);
+            result.put("messageCount", messageCount);
+            result.put("oldestMessage", messageDetails);
+            
+        } catch (Exception e) {
+            logger.severe("Failed to get oldest message - host: " + mailboxHost + ", user: " + mailboxUser + 
+                         ", folder: " + mailboxFolder + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            statsService.recordError("getOldestMessage", mailboxHost, mailboxUser, mailboxFolder, 
+                    e.getMessage(), e.getClass().getName() + ": " + e.getMessage(), context);
+            
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        } finally {
+            // Always close the folder
+            if (folder != null) {
+                try {
+                    folder.close(false);
+                } catch (Exception e) {
+                    logger.warning("Error closing folder: " + e.getMessage());
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Gets the newest message from a folder for an existing cached connection.
+     * Connection must already be open/cached, otherwise returns an error.
+     * Returns message metadata including subject, from, to, date, and size.
+     * 
+     * @param mailboxHost The mailbox host
+     * @param mailboxUser The mailbox username
+     * @param mailboxFolder The folder name (default "INBOX")
+     * @return Map containing success status and newest message details
+     */
+    public Map<String, Object> getNewestMessage(String mailboxHost, String mailboxUser, String mailboxFolder) {
+        Map<String, Object> result = new HashMap<>();
+        jakarta.mail.Folder folder = null;
+        
+        try {
+            logger.info("Attempting to get newest message - host: " + mailboxHost + ", user: " + mailboxUser + ", folder: " + (mailboxFolder != null ? mailboxFolder : "INBOX"));
+            
+            // Validate and get connection
+            Map<String, Object> validationResult = validateAndGetConnection(mailboxHost, mailboxUser, mailboxFolder);
+            if (validationResult.containsKey("error")) {
+                return validationResult;
+            }
+            
+            ImapConnectionInfo connectionInfo = (ImapConnectionInfo) validationResult.get("connectionInfo");
+            mailboxFolder = (String) validationResult.get("mailboxFolder");
+            
+            // Get the folder and open it
+            folder = connectionInfo.getStore().getFolder(mailboxFolder);
+            folder.open(jakarta.mail.Folder.READ_ONLY);
+            
+            int messageCount = folder.getMessageCount();
+            
+            if (messageCount == 0) {
+                logger.info("No messages in folder: " + mailboxFolder);
+                result.put("success", true);
+                result.put("mailboxHost", mailboxHost);
+                result.put("mailboxUser", mailboxUser);
+                result.put("mailboxFolder", mailboxFolder);
+                result.put("message", "No messages in folder");
+                result.put("messageCount", 0);
+                return result;
+            }
+            
+            // Find the message with the newest received date
+            jakarta.mail.Message newestMessage = null;
+            java.util.Date newestDate = null;
+            
+            // Process messages in batches to avoid memory issues
+            int batchSize = 100;
+            for (int start = 1; start <= messageCount; start += batchSize) {
+                int end = Math.min(start + batchSize - 1, messageCount);
+                jakarta.mail.Message[] messages = folder.getMessages(start, end);
+                
+                // Fetch message metadata in batch for better performance
+                jakarta.mail.FetchProfile fetchProfile = new jakarta.mail.FetchProfile();
+                fetchProfile.add(jakarta.mail.FetchProfile.Item.ENVELOPE);
+                fetchProfile.add(jakarta.mail.FetchProfile.Item.SIZE);
+                folder.fetch(messages, fetchProfile);
+                
+                for (jakarta.mail.Message message : messages) {
+                    java.util.Date receivedDate = message.getReceivedDate();
+                    if (receivedDate != null) {
+                        if (newestDate == null || receivedDate.after(newestDate)) {
+                            newestDate = receivedDate;
+                            newestMessage = message;
+                        }
+                    }
+                }
+            }
+            
+            if (newestMessage == null) {
+                logger.warning("No messages with received date found in folder: " + mailboxFolder);
+                result.put("success", true);
+                result.put("mailboxHost", mailboxHost);
+                result.put("mailboxUser", mailboxUser);
+                result.put("mailboxFolder", mailboxFolder);
+                result.put("message", "No messages with received date found");
+                result.put("messageCount", messageCount);
+                return result;
+            }
+            
+            // Extract message details
+            Map<String, Object> messageDetails = extractMessageDetails(newestMessage);
+            
+            // Record success in stats (1 message, size from message)
+            statsService.recordSuccess(1, newestMessage.getSize() > 0 ? newestMessage.getSize() : 0);
+            
+            logger.info("Newest message retrieved successfully - host: " + mailboxHost + ", user: " + mailboxUser + 
+                       ", folder: " + mailboxFolder + ", date: " + newestDate);
+            
+            result.put("success", true);
+            result.put("mailboxHost", mailboxHost);
+            result.put("mailboxUser", mailboxUser);
+            result.put("mailboxFolder", mailboxFolder);
+            result.put("messageCount", messageCount);
+            result.put("newestMessage", messageDetails);
+            
+        } catch (Exception e) {
+            logger.severe("Failed to get newest message - host: " + mailboxHost + ", user: " + mailboxUser + 
+                         ", folder: " + mailboxFolder + ", error: " + e.getMessage());
+            
+            // Record error in stats
+            Map<String, Object> context = new HashMap<>();
+            statsService.recordError("getNewestMessage", mailboxHost, mailboxUser, mailboxFolder, 
+                    e.getMessage(), e.getClass().getName() + ": " + e.getMessage(), context);
+            
+            result.put("success", false);
+            result.put("error", e.getMessage());
+        } finally {
+            // Always close the folder
+            if (folder != null) {
+                try {
+                    folder.close(false);
+                } catch (Exception e) {
+                    logger.warning("Error closing folder: " + e.getMessage());
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Extracts message details into a map for API response.
+     * 
+     * @param message The message to extract details from
+     * @return Map containing message metadata
+     */
+    private Map<String, Object> extractMessageDetails(jakarta.mail.Message message) throws Exception {
+        Map<String, Object> details = new HashMap<>();
+        
+        // Get message number
+        details.put("messageNumber", message.getMessageNumber());
+        
+        // Get subject
+        String subject = message.getSubject();
+        details.put("subject", subject != null ? subject : "(No Subject)");
+        
+        // Get from addresses
+        jakarta.mail.Address[] fromAddresses = message.getFrom();
+        if (fromAddresses != null && fromAddresses.length > 0) {
+            details.put("from", fromAddresses[0].toString());
+        } else {
+            details.put("from", null);
+        }
+        
+        // Get to addresses
+        jakarta.mail.Address[] toAddresses = message.getRecipients(jakarta.mail.Message.RecipientType.TO);
+        if (toAddresses != null && toAddresses.length > 0) {
+            java.util.List<String> toList = new java.util.ArrayList<>();
+            for (jakarta.mail.Address addr : toAddresses) {
+                toList.add(addr.toString());
+            }
+            details.put("to", toList);
+        } else {
+            details.put("to", null);
+        }
+        
+        // Get received date
+        java.util.Date receivedDate = message.getReceivedDate();
+        details.put("receivedDate", receivedDate != null ? receivedDate.toString() : null);
+        
+        // Get sent date
+        java.util.Date sentDate = message.getSentDate();
+        details.put("sentDate", sentDate != null ? sentDate.toString() : null);
+        
+        // Get size
+        int size = message.getSize();
+        details.put("size", size);
+        
+        return details;
+    }
+    
+    /**
      * Validates mailbox parameters and retrieves cached connection.
      * Returns either an error map or a map with connectionInfo and mailboxFolder.
      * 
