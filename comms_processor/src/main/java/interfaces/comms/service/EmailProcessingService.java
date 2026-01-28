@@ -3,7 +3,9 @@ package interfaces.comms.service;
 import interfaces.comms.model.EmailMessage;
 import interfaces.comms.model.EmailProcessingResult;
 import interfaces.comms.model.ImapConnectionInfo;
+import jakarta.annotation.Resource;
 import jakarta.ejb.Stateless;
+import jakarta.enterprise.concurrent.ManagedExecutorService;
 import jakarta.inject.Inject;
 import jakarta.mail.Folder;
 import jakarta.mail.Message;
@@ -15,10 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -27,6 +26,10 @@ import java.util.logging.Logger;
  * This service enables parallel processing of emails by dividing messages
  * into chunks and processing each chunk in a separate thread. Each thread
  * gets its own connection to the mailbox folder for thread safety.
+ * 
+ * Uses WildFly's ManagedExecutorService for proper container-managed threading.
+ * This ensures proper context propagation, lifecycle management, and integration
+ * with the application server's monitoring and management capabilities.
  */
 @Stateless
 public class EmailProcessingService {
@@ -37,13 +40,20 @@ public class EmailProcessingService {
     private static final int DEFAULT_TIMEOUT = 10000; // 10 seconds
     private static final int DEFAULT_THREAD_COUNT = 4;
     private static final int MAX_THREAD_COUNT = 10;
-    private static final int SHUTDOWN_TIMEOUT_SECONDS = 300; // 5 minutes
     
     @Inject
     private ImapConnectionCacheService cacheService;
     
     @Inject
     private EmailReaderStatsService statsService;
+    
+    /**
+     * WildFly's managed executor service for container-managed thread execution.
+     * This is injected by the container and provides proper lifecycle management,
+     * context propagation, and monitoring integration.
+     */
+    @Resource
+    private ManagedExecutorService executorService;
     
     /**
      * Processes messages from a mailbox using multiple threads.
@@ -69,189 +79,163 @@ public class EmailProcessingService {
             Boolean processNewest) {
         
         Map<String, Object> result = new HashMap<>();
-        ExecutorService executorService = null;
         
+        // Validate inputs
+        if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "mailboxHost is required");
+            return result;
+        }
+        
+        if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "mailboxUser is required");
+            return result;
+        }
+        
+        if (mailboxPassword == null || mailboxPassword.trim().isEmpty()) {
+            result.put("success", false);
+            result.put("error", "mailboxPassword is required");
+            return result;
+        }
+        
+        if (processor == null) {
+            result.put("success", false);
+            result.put("error", "processor is required");
+            return result;
+        }
+        
+        // Set defaults
+        if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
+            mailboxFolder = "INBOX";
+        }
+        
+        if (threadCount == null || threadCount < 1) {
+            threadCount = DEFAULT_THREAD_COUNT;
+        }
+        
+        if (threadCount > MAX_THREAD_COUNT) {
+            threadCount = MAX_THREAD_COUNT;
+            }
+        
+        if (maxMessages == null || maxMessages < 0) {
+            maxMessages = 0; // 0 means all messages
+        }
+        
+        if (processNewest == null) {
+            processNewest = false; // Default to oldest first
+        }
+        
+        logger.info("Starting multi-threaded email processing - host: " + mailboxHost + 
+                   ", user: " + mailboxUser + ", folder: " + mailboxFolder + 
+                   ", threads: " + threadCount + ", maxMessages: " + maxMessages);
+        
+        // Get total message count using a temporary connection
+        Folder folder = null;
+        Store tempStore = null;
+        int totalMessages = 0;
         try {
-            // Validate inputs
-            if (mailboxHost == null || mailboxHost.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxHost is required");
-                return result;
-            }
+            Properties props = getImapProperties(mailboxHost);
+            Session session = Session.getInstance(props, null);
+            tempStore = session.getStore(IMAPS_PROTOCOL);
+            tempStore.connect(mailboxHost, mailboxUser, mailboxPassword);
             
-            if (mailboxUser == null || mailboxUser.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxUser is required");
-                return result;
-            }
-            
-            if (mailboxPassword == null || mailboxPassword.trim().isEmpty()) {
-                result.put("success", false);
-                result.put("error", "mailboxPassword is required");
-                return result;
-            }
-            
-            if (processor == null) {
-                result.put("success", false);
-                result.put("error", "processor is required");
-                return result;
-            }
-            
-            // Set defaults
-            if (mailboxFolder == null || mailboxFolder.trim().isEmpty()) {
-                mailboxFolder = "INBOX";
-            }
-            
-            if (threadCount == null || threadCount < 1) {
-                threadCount = DEFAULT_THREAD_COUNT;
-            }
-            
-            if (threadCount > MAX_THREAD_COUNT) {
-                threadCount = MAX_THREAD_COUNT;
-            }
-            
-            if (maxMessages == null || maxMessages < 0) {
-                maxMessages = 0; // 0 means all messages
-            }
-            
-            if (processNewest == null) {
-                processNewest = false; // Default to oldest first
-            }
-            
-            logger.info("Starting multi-threaded email processing - host: " + mailboxHost + 
-                       ", user: " + mailboxUser + ", folder: " + mailboxFolder + 
-                       ", threads: " + threadCount + ", maxMessages: " + maxMessages);
-            
-            // Get total message count using a temporary connection
-            Folder folder = null;
-            Store tempStore = null;
-            int totalMessages = 0;
+            folder = tempStore.getFolder(mailboxFolder);
+            folder.open(Folder.READ_ONLY);
+            totalMessages = folder.getMessageCount();
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", "Failed to connect to mailbox: " + e.getMessage());
+            return result;
+        } finally {
             try {
-                Properties props = getImapProperties(mailboxHost);
-                Session session = Session.getInstance(props, null);
-                tempStore = session.getStore(IMAPS_PROTOCOL);
-                tempStore.connect(mailboxHost, mailboxUser, mailboxPassword);
-                
-                folder = tempStore.getFolder(mailboxFolder);
-                folder.open(Folder.READ_ONLY);
-                totalMessages = folder.getMessageCount();
-            } finally {
                 if (folder != null && folder.isOpen()) {
                     folder.close(false);
                 }
                 if (tempStore != null && tempStore.isConnected()) {
                     tempStore.close();
                 }
+            } catch (Exception e) {
+                logger.warning("Error closing temporary connection: " + e.getMessage());
             }
-            
-            if (totalMessages == 0) {
-                result.put("success", true);
-                result.put("message", "No messages in folder");
-                result.put("mailboxHost", mailboxHost);
-                result.put("mailboxUser", mailboxUser);
-                result.put("mailboxFolder", mailboxFolder);
-                result.put("totalMessages", 0);
-                result.put("processedCount", 0);
-                return result;
-            }
-            
-            // Determine which messages to process
-            int messagesToProcess = maxMessages > 0 ? Math.min(maxMessages, totalMessages) : totalMessages;
-            
-            // Calculate message ranges for each thread
-            List<int[]> messageRanges = calculateMessageRanges(
-                    totalMessages, messagesToProcess, threadCount, processNewest);
-            
-            logger.info("Processing " + messagesToProcess + " messages from " + totalMessages + 
-                       " total using " + messageRanges.size() + " threads");
-            
-            // Create thread pool
-            executorService = Executors.newFixedThreadPool(messageRanges.size());
-            
-            // Create processing result collector
-            EmailProcessingResult processingResult = new EmailProcessingResult();
-            
-            // Make parameters effectively final for lambda
-            final String finalMailboxHost = mailboxHost;
-            final String finalMailboxUser = mailboxUser;
-            final String finalMailboxPassword = mailboxPassword;
-            final String finalMailboxFolder = mailboxFolder;
-            final EmailProcessor finalProcessor = processor;
-            
-            // Submit tasks for each message range
-            List<Future<Void>> futures = new ArrayList<>();
-            for (int[] range : messageRanges) {
-                final int startMsg = range[0];
-                final int endMsg = range[1];
-                
-                Callable<Void> task = () -> {
-                    processMessageRange(
-                            finalMailboxHost, finalMailboxUser, finalMailboxPassword, finalMailboxFolder,
-                            startMsg, endMsg, finalProcessor, processingResult);
-                    return null;
-                };
-                
-                futures.add(executorService.submit(task));
-            }
-            
-            // Wait for all tasks to complete
-            for (Future<Void> future : futures) {
-                try {
-                    future.get(); // This will throw exception if task failed
-                } catch (Exception e) {
-                    logger.severe("Task execution failed: " + e.getMessage());
-                    processingResult.recordError(null, "Task execution failed: " + e.getMessage(), e);
-                }
-            }
-            
-            // Mark processing as complete
-            processingResult.markComplete();
-            
-            logger.info("Multi-threaded processing completed - processed: " + processingResult.getProcessedCount() +
-                       ", success: " + processingResult.getSuccessCount() + 
-                       ", errors: " + processingResult.getErrorCount() +
-                       ", duration: " + processingResult.getDurationMs() + "ms");
-            
-            // Build result
+        }
+        
+        if (totalMessages == 0) {
             result.put("success", true);
+            result.put("message", "No messages in folder");
             result.put("mailboxHost", mailboxHost);
             result.put("mailboxUser", mailboxUser);
             result.put("mailboxFolder", mailboxFolder);
-            result.put("totalMessages", totalMessages);
-            result.put("threadsUsed", messageRanges.size());
-            result.putAll(processingResult.toMap());
+            result.put("totalMessages", 0);
+            result.put("processedCount", 0);
+            return result;
+        }
+        
+        // Determine which messages to process
+        int messagesToProcess = maxMessages > 0 ? Math.min(maxMessages, totalMessages) : totalMessages;
+        
+        // Calculate message ranges for each thread
+        List<int[]> messageRanges = calculateMessageRanges(
+                totalMessages, messagesToProcess, threadCount, processNewest);
+        
+        logger.info("Processing " + messagesToProcess + " messages from " + totalMessages + 
+                   " total using " + messageRanges.size() + " threads");
+        
+        // Create processing result collector
+        EmailProcessingResult processingResult = new EmailProcessingResult();
+        
+        // Make parameters effectively final for lambda
+        final String finalMailboxHost = mailboxHost;
+        final String finalMailboxUser = mailboxUser;
+        final String finalMailboxPassword = mailboxPassword;
+        final String finalMailboxFolder = mailboxFolder;
+        final EmailProcessor finalProcessor = processor;
+        
+        // Submit tasks for each message range using WildFly's managed executor service
+        List<Future<Void>> futures = new ArrayList<>();
+        for (int[] range : messageRanges) {
+            final int startMsg = range[0];
+            final int endMsg = range[1];
             
-            // Record overall stats
-            statsService.recordSuccess(processingResult.getSuccessCount(), 0); // Size not tracked here
+            Callable<Void> task = () -> {
+                processMessageRange(
+                        finalMailboxHost, finalMailboxUser, finalMailboxPassword, finalMailboxFolder,
+                        startMsg, endMsg, finalProcessor, processingResult);
+                return null;
+            };
             
-        } catch (Exception e) {
-            logger.severe("Multi-threaded processing failed: " + e.getMessage());
-            
-            // Record error in stats
-            Map<String, Object> context = new HashMap<>();
-            context.put("mailboxHost", mailboxHost);
-            context.put("mailboxUser", mailboxUser);
-            context.put("mailboxFolder", mailboxFolder);
-            statsService.recordError("processMessages", mailboxHost, mailboxUser, mailboxFolder,
-                    e.getMessage(), e.getClass().getName() + ": " + e.getMessage(), context);
-            
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        } finally {
-            // Shutdown executor service
-            if (executorService != null) {
-                executorService.shutdown();
-                try {
-                    if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                        executorService.shutdownNow();
-                        logger.warning("Executor service did not terminate in time, forcing shutdown");
-                    }
-                } catch (InterruptedException e) {
-                    executorService.shutdownNow();
-                    Thread.currentThread().interrupt();
-                }
+            futures.add(executorService.submit(task));
+        }
+        
+        // Wait for all tasks to complete
+        for (Future<Void> future : futures) {
+            try {
+                future.get(); // This will throw exception if task failed
+            } catch (Exception e) {
+                logger.severe("Task execution failed: " + e.getMessage());
+                processingResult.recordError(null, "Task execution failed: " + e.getMessage(), e);
             }
         }
+        
+        // Mark processing as complete
+        processingResult.markComplete();
+        
+        logger.info("Multi-threaded processing completed - processed: " + processingResult.getProcessedCount() +
+                   ", success: " + processingResult.getSuccessCount() + 
+                   ", errors: " + processingResult.getErrorCount() +
+                   ", duration: " + processingResult.getDurationMs() + "ms");
+        
+        // Build result
+        result.put("success", true);
+        result.put("mailboxHost", mailboxHost);
+        result.put("mailboxUser", mailboxUser);
+        result.put("mailboxFolder", mailboxFolder);
+        result.put("totalMessages", totalMessages);
+        result.put("threadsUsed", messageRanges.size());
+        result.putAll(processingResult.toMap());
+        
+        // Record overall stats
+        statsService.recordSuccess(processingResult.getSuccessCount(), 0); // Size not tracked here
         
         return result;
     }

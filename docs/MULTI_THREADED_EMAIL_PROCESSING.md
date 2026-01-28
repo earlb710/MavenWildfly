@@ -4,10 +4,14 @@
 
 The multi-threaded email processing feature allows you to process emails from a mailbox using multiple parallel threads. This dramatically improves throughput when processing large numbers of emails.
 
+**Uses WildFly's ManagedExecutorService** for proper container-managed threading, ensuring thread safety, context propagation, and integration with WildFly's lifecycle management.
+
 ## Key Features
 
 ✅ **Parallel Processing** - Process multiple emails simultaneously  
 ✅ **Thread-Safe** - Each thread has its own IMAP connection  
+✅ **Container-Managed** - Uses WildFly's ManagedExecutorService for proper lifecycle management  
+✅ **Context Propagation** - Security and transaction contexts propagate correctly  
 ✅ **Configurable** - 1-10 threads based on your needs  
 ✅ **Flexible** - Works with any EmailProcessor implementation  
 ✅ **Observable** - Detailed per-message results and statistics  
@@ -172,6 +176,55 @@ GET /api/imap/stats
 ```
 
 Returns counts of all email operations including multi-threaded processing.
+
+## WildFly Integration
+
+### ManagedExecutorService
+
+This implementation uses Jakarta EE's `ManagedExecutorService` instead of standard Java `Executors`. This is the recommended approach for Jakarta EE/WildFly applications.
+
+**Benefits:**
+- ✅ **Lifecycle Management** - WildFly manages thread pool creation and shutdown
+- ✅ **Context Propagation** - Security and transaction contexts propagate to worker threads
+- ✅ **Monitoring** - Integrated with WildFly management console
+- ✅ **No Resource Leaks** - Proper cleanup during application redeployment
+
+**Implementation:**
+```java
+@Resource
+private ManagedExecutorService executorService;
+```
+
+WildFly automatically injects the default managed executor service. No manual thread pool management required!
+
+### Configuring Thread Pool (Optional)
+
+The default managed executor service works out-of-the-box. To customize, edit `standalone.xml`:
+
+```xml
+<subsystem xmlns="urn:jboss:domain:ee:5.0">
+    <managed-executor-services>
+        <managed-executor-service name="default"
+            core-threads="5"
+            max-threads="25"
+            keepalive-time="5000"
+            queue-length="1000000"/>
+    </managed-executor-services>
+</subsystem>
+```
+
+**Parameters:**
+- `core-threads` - Minimum threads to keep alive
+- `max-threads` - Maximum concurrent threads
+- `keepalive-time` - Milliseconds to keep idle threads
+- `queue-length` - Size of task queue
+
+### Best Practices for WildFly
+
+1. **Use ManagedExecutorService** - Never use `Executors.newFixedThreadPool()` in WildFly
+2. **Let Container Manage** - Don't manually shutdown executor services
+3. **Monitor Usage** - Use WildFly admin console to monitor thread usage
+4. **Test Redeployment** - Ensure no thread leaks during application redeployment
 
 ## Summary
 
