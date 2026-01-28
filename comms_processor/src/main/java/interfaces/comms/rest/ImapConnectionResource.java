@@ -2,6 +2,8 @@ package interfaces.comms.rest;
 
 import interfaces.comms.service.ImapConnectionCacheService;
 import interfaces.comms.service.ImapConnectionService;
+import interfaces.comms.service.EmailProcessingService;
+import interfaces.comms.service.EmailProcessor;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -32,6 +34,9 @@ public class ImapConnectionResource {
     
     @Inject
     private interfaces.comms.service.EmailReaderStatsService statsService;
+    
+    @Inject
+    private EmailProcessingService emailProcessingService;
 
     /**
      * Tests IMAPS connection with provided credentials.
@@ -631,6 +636,105 @@ public class ImapConnectionResource {
             return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
         } else {
             return String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+        }
+    }
+    
+    /**
+     * Processes messages from a mailbox using multiple threads.
+     * This endpoint requires an EmailProcessor implementation to be provided.
+     * 
+     * Request body example:
+     * {
+     *   "mailboxHost": "imap.gmail.com",
+     *   "mailboxUser": "user@gmail.com",
+     *   "mailboxPassword": "app-password",
+     *   "mailboxFolder": "INBOX",
+     *   "processorClassName": "com.example.MyEmailProcessor",
+     *   "threadCount": 4,
+     *   "maxMessages": 100,
+     *   "processNewest": false
+     * }
+     * 
+     * Note: The processorClassName must be a fully qualified class name that implements
+     * the EmailProcessor interface and is available on the classpath.
+     * 
+     * @param request Map containing processing parameters
+     * @return Response with processing results
+     */
+    @POST
+    @Path("/processMessages")
+    public Response processMessages(Map<String, Object> request) {
+        // Validate request body
+        if (request == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Request body is required");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        String mailboxHost = (String) request.get("mailboxHost");
+        String mailboxUser = (String) request.get("mailboxUser");
+        String mailboxPassword = (String) request.get("mailboxPassword");
+        String mailboxFolder = (String) request.get("mailboxFolder");
+        String processorClassName = (String) request.get("processorClassName");
+        Integer threadCount = request.get("threadCount") != null ? 
+                ((Number) request.get("threadCount")).intValue() : null;
+        Integer maxMessages = request.get("maxMessages") != null ? 
+                ((Number) request.get("maxMessages")).intValue() : null;
+        Boolean processNewest = (Boolean) request.get("processNewest");
+        
+        // Validate required parameters
+        if (processorClassName == null || processorClassName.trim().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "processorClassName is required - must be a fully qualified class name implementing EmailProcessor");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        // Try to instantiate the processor
+        EmailProcessor processor;
+        try {
+            Class<?> processorClass = Class.forName(processorClassName);
+            if (!EmailProcessor.class.isAssignableFrom(processorClass)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("error", "processorClassName must implement EmailProcessor interface");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(error)
+                        .build();
+            }
+            processor = (EmailProcessor) processorClass.getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Processor class not found: " + processorClassName);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Failed to instantiate processor: " + e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(error)
+                    .build();
+        }
+        
+        // Call the processing service
+        Map<String, Object> result = emailProcessingService.processMessages(
+                mailboxHost, mailboxUser, mailboxPassword, mailboxFolder,
+                processor, threadCount, maxMessages, processNewest);
+        
+        if ((Boolean) result.get("success")) {
+            return Response.ok(result).build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(result)
+                    .build();
         }
     }
 }
