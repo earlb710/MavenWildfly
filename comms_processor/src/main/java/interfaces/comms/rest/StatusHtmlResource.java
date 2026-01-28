@@ -94,6 +94,9 @@ public class StatusHtmlResource {
             html.append("        .property-section { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px; }\n");
             html.append("        .property-key { font-weight: bold; color: #495057; }\n");
             html.append("        .property-value { color: #6c757d; }\n");
+            html.append("        .endpoint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }\n");
+            html.append("        .endpoint-grid-single { grid-column: 1 / -1; }\n");
+            html.append("        .column-header { font-weight: bold; color: #007bff; padding: 5px 10px; background-color: #e7f3ff; border-radius: 4px; margin-bottom: 5px; text-align: center; }\n");
             html.append("    </style>\n");
             html.append("</head>\n");
             html.append("<body>\n");
@@ -118,34 +121,39 @@ public class StatusHtmlResource {
             html.append("        <h2>Available API Endpoints</h2>\n");
             
             html.append("        <h3>Status Endpoints</h3>\n");
-            html.append("        <div class=\"endpoint-card\">\n");
+            html.append("        <div class=\"endpoint-card endpoint-grid-single\">\n");
             html.append("            <span class=\"endpoint-method\">GET</span>\n");
             html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/ping\">/api/status/ping</a></span>\n");
             html.append("            <div class=\"endpoint-desc\">Simple ping endpoint to verify service availability</div>\n");
             html.append("        </div>\n");
             
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/serverStatus\">/api/status/serverStatus</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">Returns detailed information about all services running on WildFly</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/serverStatus.html\">/api/status/serverStatus.html</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">HTML version of server status for browser viewing</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/datasources\">/api/status/datasources</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">Returns a list of all datasources configured in WildFly</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/datasources.html\">/api/status/datasources.html</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">HTML version of datasources for browser viewing</div>\n");
+            html.append("        <div class=\"endpoint-grid\">\n");
+            html.append("            <div>\n");
+            html.append("                <div class=\"column-header\">JSON API</div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/serverStatus\">/api/status/serverStatus</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">Returns detailed information about all services running on WildFly</div>\n");
+            html.append("                </div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/datasources\">/api/status/datasources</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">Returns a list of all datasources configured in WildFly</div>\n");
+            html.append("                </div>\n");
+            html.append("            </div>\n");
+            html.append("            <div>\n");
+            html.append("                <div class=\"column-header\">HTML View</div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/serverStatus.html\">/api/status/serverStatus.html</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">HTML version of server status for browser viewing</div>\n");
+            html.append("                </div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/status/datasources.html\">/api/status/datasources.html</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">HTML version of datasources for browser viewing</div>\n");
+            html.append("                </div>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <h3>IMAP Endpoints</h3>\n");
@@ -321,28 +329,33 @@ public class StatusHtmlResource {
             html.append("            </div>\n");
             html.append("        </div>\n");
             
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/status\">/api/imap/status</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">Returns the status of the IMAPS connection cache</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/stats\">/api/imap/stats</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">Returns email reader statistics (total emails read, size, errors, and last 20 errors)</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/status.html\">/api/imap/status.html</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">HTML version of IMAPS connection cache status for browser viewing</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/stats.html\">/api/imap/stats.html</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">HTML version of email reader statistics for browser viewing</div>\n");
+            html.append("        <div class=\"endpoint-grid\">\n");
+            html.append("            <div>\n");
+            html.append("                <div class=\"column-header\">JSON API</div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/status\">/api/imap/status</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">Returns the status of the IMAPS connection cache</div>\n");
+            html.append("                </div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/stats\">/api/imap/stats</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">Returns email reader statistics (total emails read, size, errors, and last 20 errors)</div>\n");
+            html.append("                </div>\n");
+            html.append("            </div>\n");
+            html.append("            <div>\n");
+            html.append("                <div class=\"column-header\">HTML View</div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/status.html\">/api/imap/status.html</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">HTML version of IMAPS connection cache status for browser viewing</div>\n");
+            html.append("                </div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/imap/stats.html\">/api/imap/stats.html</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">HTML version of email reader statistics for browser viewing</div>\n");
+            html.append("                </div>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             html.append("        <h3>SMTP Endpoints</h3>\n");
@@ -481,28 +494,33 @@ public class StatusHtmlResource {
             html.append("            </div>\n");
             html.append("        </div>\n");
             
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/status\">/api/smtp/status</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">Returns the status of the SMTP connection cache</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats\">/api/smtp/stats</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">Returns email sender statistics (total emails sent, size, errors, and last 20 errors)</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/status.html\">/api/smtp/status.html</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">HTML version of SMTP connection cache status for browser viewing</div>\n");
-            html.append("        </div>\n");
-            
-            html.append("        <div class=\"endpoint-card\">\n");
-            html.append("            <span class=\"endpoint-method\">GET</span>\n");
-            html.append("            <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats.html\">/api/smtp/stats.html</a></span>\n");
-            html.append("            <div class=\"endpoint-desc\">HTML version of email sender statistics for browser viewing</div>\n");
+            html.append("        <div class=\"endpoint-grid\">\n");
+            html.append("            <div>\n");
+            html.append("                <div class=\"column-header\">JSON API</div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/status\">/api/smtp/status</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">Returns the status of the SMTP connection cache</div>\n");
+            html.append("                </div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats\">/api/smtp/stats</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">Returns email sender statistics (total emails sent, size, errors, and last 20 errors)</div>\n");
+            html.append("                </div>\n");
+            html.append("            </div>\n");
+            html.append("            <div>\n");
+            html.append("                <div class=\"column-header\">HTML View</div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/status.html\">/api/smtp/status.html</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">HTML version of SMTP connection cache status for browser viewing</div>\n");
+            html.append("                </div>\n");
+            html.append("                <div class=\"endpoint-card\">\n");
+            html.append("                    <span class=\"endpoint-method\">GET</span>\n");
+            html.append("                    <span class=\"endpoint-path\"><a href=\"/comms_processor/api/smtp/stats.html\">/api/smtp/stats.html</a></span>\n");
+            html.append("                    <div class=\"endpoint-desc\">HTML version of email sender statistics for browser viewing</div>\n");
+            html.append("                </div>\n");
+            html.append("            </div>\n");
             html.append("        </div>\n");
             
             // Properties Section
