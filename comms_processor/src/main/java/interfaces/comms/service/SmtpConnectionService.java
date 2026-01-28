@@ -185,6 +185,12 @@ public class SmtpConnectionService {
             // Validate required fields
             if (smtpHost == null || smtpHost.trim().isEmpty()) {
                 logger.warning("Send text email failed: smtpHost is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendTextMessage", smtpHost, smtpUser, 
+                        "Missing parameter", "smtpHost is required", context);
+                
                 result.put("success", false);
                 result.put("error", "smtpHost is required");
                 return result;
@@ -192,6 +198,12 @@ public class SmtpConnectionService {
             
             if (smtpUser == null || smtpUser.trim().isEmpty()) {
                 logger.warning("Send text email failed: smtpUser is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendTextMessage", smtpHost, smtpUser, 
+                        "Missing parameter", "smtpUser is required", context);
+                
                 result.put("success", false);
                 result.put("error", "smtpUser is required");
                 return result;
@@ -199,6 +211,12 @@ public class SmtpConnectionService {
             
             if (fromAddress == null || fromAddress.trim().isEmpty()) {
                 logger.warning("Send text email failed: fromAddress is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendTextMessage", smtpHost, smtpUser, 
+                        "Missing parameter", "fromAddress is required", context);
+                
                 result.put("success", false);
                 result.put("error", "fromAddress is required");
                 return result;
@@ -206,6 +224,13 @@ public class SmtpConnectionService {
             
             if (toAddress == null || toAddress.trim().isEmpty()) {
                 logger.warning("Send text email failed: toAddress is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("fromAddress", fromAddress);
+                statsService.recordError("sendTextMessage", smtpHost, smtpUser, 
+                        "Missing parameter", "toAddress is required", context);
+                
                 result.put("success", false);
                 result.put("error", "toAddress is required");
                 return result;
@@ -224,6 +249,17 @@ public class SmtpConnectionService {
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
                 logger.severe("Send text email failed: Connection not open - host: " + smtpHost + ", user: " + smtpUser);
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("fromAddress", fromAddress);
+                context.put("toAddress", toAddress);
+                context.put("subject", subject);
+                statsService.recordError("sendTextMessage", smtpHost, smtpUser, 
+                        "Connection not open", 
+                        "Connection not open. Use /api/smtp/open to establish a connection first", 
+                        context);
+                
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
@@ -306,6 +342,12 @@ public class SmtpConnectionService {
             // Validate required fields
             if (smtpHost == null || smtpHost.trim().isEmpty()) {
                 logger.warning("Send .eml email failed: smtpHost is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendEmail", smtpHost, smtpUser, 
+                        "Missing parameter", "smtpHost is required", context);
+                
                 result.put("success", false);
                 result.put("error", "smtpHost is required");
                 return result;
@@ -313,6 +355,12 @@ public class SmtpConnectionService {
             
             if (smtpUser == null || smtpUser.trim().isEmpty()) {
                 logger.warning("Send .eml email failed: smtpUser is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendEmail", smtpHost, smtpUser, 
+                        "Missing parameter", "smtpUser is required", context);
+                
                 result.put("success", false);
                 result.put("error", "smtpUser is required");
                 return result;
@@ -320,6 +368,12 @@ public class SmtpConnectionService {
             
             if (data == null || data.trim().isEmpty()) {
                 logger.warning("Send .eml email failed: data is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendEmail", smtpHost, smtpUser, 
+                        "Missing parameter", "data is required", context);
+                
                 result.put("success", false);
                 result.put("error", "data is required");
                 return result;
@@ -330,6 +384,15 @@ public class SmtpConnectionService {
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
                 logger.severe("Send .eml email failed: Connection not open - host: " + smtpHost + ", user: " + smtpUser);
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("dataLength", data != null ? data.length() : 0);
+                statsService.recordError("sendEmail", smtpHost, smtpUser, 
+                        "Connection not open", 
+                        "Connection not open. Use /api/smtp/open to establish a connection first", 
+                        context);
+                
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
@@ -403,6 +466,13 @@ public class SmtpConnectionService {
             // Validate required fields
             if (smtpHost == null || smtpHost.trim().isEmpty()) {
                 logger.warning("Send batch emails failed: smtpHost is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("batchSize", dataArray != null ? dataArray.size() : 0);
+                statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                        "Missing parameter", "smtpHost is required", context);
+                
                 result.put("success", false);
                 result.put("error", "smtpHost is required");
                 return result;
@@ -410,6 +480,13 @@ public class SmtpConnectionService {
             
             if (smtpUser == null || smtpUser.trim().isEmpty()) {
                 logger.warning("Send batch emails failed: smtpUser is required");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("batchSize", dataArray != null ? dataArray.size() : 0);
+                statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                        "Missing parameter", "smtpUser is required", context);
+                
                 result.put("success", false);
                 result.put("error", "smtpUser is required");
                 return result;
@@ -417,6 +494,12 @@ public class SmtpConnectionService {
             
             if (dataArray == null || dataArray.isEmpty()) {
                 logger.warning("Send batch emails failed: data array is required and must not be empty");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                        "Missing parameter", "data array is required and must not be empty", context);
+                
                 result.put("success", false);
                 result.put("error", "data array is required and must not be empty");
                 return result;
@@ -425,6 +508,16 @@ public class SmtpConnectionService {
             // Check batch size constraints
             if (dataArray.size() < minBatchSize) {
                 logger.warning("Send batch emails failed: Batch size (" + dataArray.size() + ") is below minimum (" + minBatchSize + ")");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("batchSize", dataArray.size());
+                context.put("minBatchSize", minBatchSize);
+                statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                        "Invalid batch size", 
+                        "Batch size (" + dataArray.size() + ") is below minimum (" + minBatchSize + ")", 
+                        context);
+                
                 result.put("success", false);
                 result.put("error", "Batch size (" + dataArray.size() + ") is below minimum (" + minBatchSize + ")");
                 return result;
@@ -435,6 +528,15 @@ public class SmtpConnectionService {
             
             if (connectionInfo == null || !connectionInfo.isConnected()) {
                 logger.severe("Send batch emails failed: Connection not open - host: " + smtpHost + ", user: " + smtpUser);
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("batchSize", dataArray.size());
+                statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                        "Connection not open", 
+                        "Connection not open. Use /api/smtp/open to establish a connection first", 
+                        context);
+                
                 result.put("success", false);
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
@@ -444,6 +546,15 @@ public class SmtpConnectionService {
             String password = connectionInfo.getPassword();
             if (password == null || password.isEmpty()) {
                 logger.severe("Send batch emails failed: Password not available for automatic reconnection");
+                
+                // Record error in stats
+                Map<String, Object> context = new HashMap<>();
+                context.put("batchSize", dataArray.size());
+                statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                        "Password not available", 
+                        "Password not available for automatic reconnection. Connection may have expired.", 
+                        context);
+                
                 result.put("success", false);
                 result.put("error", "Password not available for automatic reconnection. Connection may have expired.");
                 return result;
