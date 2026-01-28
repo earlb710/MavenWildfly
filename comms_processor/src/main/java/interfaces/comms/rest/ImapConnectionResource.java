@@ -652,8 +652,13 @@ public class ImapConnectionResource {
      *   "processorClassName": "com.example.MyEmailProcessor",
      *   "threadCount": 4,
      *   "maxMessages": 100,
-     *   "processNewest": false
+     *   "processNewest": false,
+     *   "removeMessage": false
      * }
+     * 
+     * Optional parameters:
+     * - processNewest: If true, process newest messages first (default: false)
+     * - removeMessage: If true, delete messages after successful processing (default: false)
      * 
      * Note: The processorClassName must be a fully qualified class name that implements
      * the EmailProcessor interface and is available on the classpath.
@@ -683,8 +688,11 @@ public class ImapConnectionResource {
                 ((Number) request.get("threadCount")).intValue() : null;
         Integer maxMessages = request.get("maxMessages") != null ? 
                 ((Number) request.get("maxMessages")).intValue() : null;
-        Boolean processNewest = (Boolean) request.get("processNewest");
-        Boolean removeMessage = (Boolean) request.get("removeMessage");
+        // Optional parameters with default values
+        Boolean processNewest = request.get("processNewest") != null ? 
+                (Boolean) request.get("processNewest") : false;
+        Boolean removeMessage = request.get("removeMessage") != null ? 
+                (Boolean) request.get("removeMessage") : false;
         
         // Validate required parameters
         if (processorClassName == null || processorClassName.trim().isEmpty()) {
