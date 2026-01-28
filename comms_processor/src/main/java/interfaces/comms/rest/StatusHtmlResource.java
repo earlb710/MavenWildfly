@@ -354,6 +354,7 @@ public class StatusHtmlResource {
             html.append("  \"messageCount\": 150,\n");
             html.append("  \"oldestMessage\": {\n");
             html.append("    \"messageNumber\": 1,\n");
+            html.append("    \"messageId\": \"<welcome-123@example.com>\",\n");
             html.append("    \"subject\": \"Welcome Email\",\n");
             html.append("    \"from\": \"admin@example.com\",\n");
             html.append("    \"to\": [\"user@gmail.com\"],\n");
@@ -398,6 +399,7 @@ public class StatusHtmlResource {
             html.append("  \"messageCount\": 150,\n");
             html.append("  \"newestMessage\": {\n");
             html.append("    \"messageNumber\": 150,\n");
+            html.append("    \"messageId\": \"<update-456@example.com>\",\n");
             html.append("    \"subject\": \"Latest Update\",\n");
             html.append("    \"from\": \"notifications@example.com\",\n");
             html.append("    \"to\": [\"user@gmail.com\"],\n");

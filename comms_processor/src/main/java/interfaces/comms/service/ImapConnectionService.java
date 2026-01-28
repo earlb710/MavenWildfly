@@ -630,6 +630,14 @@ public class ImapConnectionService {
         // Get message number
         details.put("messageNumber", message.getMessageNumber());
         
+        // Get Message-ID header (unique identifier for the message)
+        String[] messageIdHeaders = message.getHeader("Message-ID");
+        if (messageIdHeaders != null && messageIdHeaders.length > 0) {
+            details.put("messageId", messageIdHeaders[0]);
+        } else {
+            details.put("messageId", null);
+        }
+        
         // Get subject
         String subject = message.getSubject();
         details.put("subject", subject != null ? subject : "(No Subject)");
