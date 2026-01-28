@@ -211,6 +211,35 @@ curl http://localhost:8080/comms_processor/api/status
 - **Security**: Sensitive values (URLs, usernames) are partially masked for security
 - **Centralized**: Single endpoint to understand the entire API surface
 
+#### 0b. Main API Status HTML Endpoint (NEW)
+
+**Endpoint:** `GET /api/status.html`
+
+**Description:** HTML version of the main API status endpoint for browser viewing. Provides a user-friendly web interface showing all available API endpoints, their methods, descriptions, and current system property values.
+
+**Usage:**
+- Open in browser: http://localhost:8080/comms_processor/api/status.html
+
+**Key Features:**
+- **Browser-Friendly**: Fully formatted HTML page with professional styling
+- **Complete Overview**: Shows all API endpoints grouped by category (Status, IMAP, SMTP)
+- **Visual Design**: Color-coded HTTP methods (GET in green, POST in yellow)
+- **Navigation**: Quick links to other HTML status pages
+- **System Properties**: Displays database configuration, email settings, and Java environment
+- **Responsive**: Mobile-friendly design
+- **Security**: Sensitive values are masked for security
+
+**What's Displayed:**
+- Application status and version information
+- All available REST API endpoints with descriptions
+- Status endpoints (ping, serverStatus, datasources)
+- IMAP endpoints (test, open, close, mailboxCount, mailboxStats, status)
+- SMTP endpoints (open, close, sendTextMessage, send, status)
+- Database configuration (PostgreSQL and Oracle)
+- Connection pool settings
+- Email sender and reader configuration
+- Java environment details
+
 #### 1. Ping Endpoint
 
 **Endpoint:** `GET /api/status/ping`

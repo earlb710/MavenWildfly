@@ -15,9 +15,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
- * Manages a cache of SMTP connections with automatic cleanup.
+ * Manages a cache of SMTP connections with automatic cleanup and a ready pool for connection recycling.
  * Maintains up to a configurable number of connections (default 50).
  * Automatically closes idle connections after 5 minutes of inactivity.
+ * When connections are closed, they're moved to a ready pool for potential reuse.
  */
 @Singleton
 @Startup
@@ -28,10 +29,35 @@ public class SmtpConnectionCacheService {
     private static final int DEFAULT_MAX_CONNECTIONS = 50;
     private static final int DEFAULT_MAX_POOL_SIZE = 100;
     private static final long IDLE_TIMEOUT_SECONDS = 300; // 5 minutes
+    private static final long READY_POOL_TIMEOUT_SECONDS = 300; // 5 minutes
     
     private final Map<String, SmtpConnectionInfo> connectionCache = new ConcurrentHashMap<>();
+    private final Map<String, ReadyConnection> readyPool = new ConcurrentHashMap<>();
     private int maxConnections = DEFAULT_MAX_CONNECTIONS;
     private int maxPoolSize = DEFAULT_MAX_POOL_SIZE;
+    
+    /**
+     * Inner class to store connection credentials and metadata for the ready pool.
+     */
+    private static class ReadyConnection {
+        final String host;
+        final String username;
+        final String password;
+        final Properties props;
+        final Instant addedTime;
+        
+        ReadyConnection(String host, String username, String password, Properties props) {
+            this.host = host;
+            this.username = username;
+            this.password = password;
+            this.props = props;
+            this.addedTime = Instant.now();
+        }
+        
+        long getAgeSeconds() {
+            return Instant.now().getEpochSecond() - addedTime.getEpochSecond();
+        }
+    }
     
     @PostConstruct
     public void init() {
@@ -63,10 +89,13 @@ public class SmtpConnectionCacheService {
         logger.info("Closing all cached SMTP connections");
         connectionCache.values().forEach(SmtpConnectionInfo::close);
         connectionCache.clear();
+        readyPool.clear();
+        logger.info("Cleared ready pool");
     }
     
     /**
      * Gets or creates a cached SMTP connection.
+     * First checks the ready pool for existing connection credentials.
      * 
      * @param host SMTP server host
      * @param username Username for authentication
@@ -104,7 +133,23 @@ public class SmtpConnectionCacheService {
             return existingInfo;
         }
         
-        // Check if we need to evict connections
+        // Check ready pool first before creating new connection
+        ReadyConnection readyConn = readyPool.remove(key);
+        if (readyConn != null) {
+            logger.info("Found connection in ready pool, reusing credentials for: " + key);
+            // Use credentials from ready pool
+            password = readyConn.password;
+            props = readyConn.props;
+        }
+        
+        // Check if we need to enforce max pool size
+        int totalSize = connectionCache.size() + readyPool.size();
+        if (totalSize >= maxPoolSize) {
+            // Close oldest connection in ready pool if available
+            evictOldestFromReadyPool();
+        }
+        
+        // Check if we need to evict from active connections
         if (connectionCache.size() >= maxConnections) {
             evictOldestConnection();
         }
@@ -117,7 +162,7 @@ public class SmtpConnectionCacheService {
         SmtpConnectionInfo newInfo = new SmtpConnectionInfo(host, username, password, port, transport);
         connectionCache.put(key, newInfo);
         
-        logger.info("Created new cached SMTP connection for: " + key + " (total: " + connectionCache.size() + ")");
+        logger.info("Created new cached SMTP connection for: " + key + " (active: " + connectionCache.size() + ", ready: " + readyPool.size() + ")");
         return newInfo;
     }
     
@@ -188,6 +233,9 @@ public class SmtpConnectionCacheService {
         stats.put("activeConnections", connectionCache.values().stream()
                 .filter(SmtpConnectionInfo::isConnected)
                 .count());
+        stats.put("readyPoolSize", readyPool.size());
+        stats.put("maxPoolSize", maxPoolSize);
+        stats.put("totalPooled", connectionCache.size() + readyPool.size());
         
         return stats;
     }
@@ -200,7 +248,7 @@ public class SmtpConnectionCacheService {
     public void cleanupIdleConnections() {
         java.util.concurrent.atomic.AtomicInteger removedCount = new java.util.concurrent.atomic.AtomicInteger(0);
         
-        // Use iterator for safe removal during iteration
+        // Clean up active connections
         for (String key : new ArrayList<>(connectionCache.keySet())) {
             connectionCache.computeIfPresent(key, (k, info) -> {
                 long idleTime = info.getIdleTimeSeconds();
@@ -217,6 +265,53 @@ public class SmtpConnectionCacheService {
         int removed = removedCount.get();
         if (removed > 0) {
             logger.info("Cleaned up " + removed + " idle SMTP connections");
+        }
+        
+        // Clean up ready pool
+        cleanupReadyPool();
+    }
+    
+    /**
+     * Cleans up connections in ready pool that are older than 5 minutes.
+     */
+    private void cleanupReadyPool() {
+        int removedCount = 0;
+        
+        for (String key : new ArrayList<>(readyPool.keySet())) {
+            ReadyConnection conn = readyPool.get(key);
+            if (conn != null && conn.getAgeSeconds() > READY_POOL_TIMEOUT_SECONDS) {
+                readyPool.remove(key);
+                removedCount++;
+                logger.info("Removed connection from SMTP ready pool: " + key + " (age: " + conn.getAgeSeconds() + " seconds)");
+            }
+        }
+        
+        if (removedCount > 0) {
+            logger.info("Cleaned up " + removedCount + " connections from SMTP ready pool");
+        }
+    }
+    
+    /**
+     * Evicts the oldest connection from ready pool when pool is full.
+     */
+    private void evictOldestFromReadyPool() {
+        if (readyPool.isEmpty()) {
+            return;
+        }
+        
+        String oldestKey = null;
+        ReadyConnection oldest = null;
+        
+        for (Map.Entry<String, ReadyConnection> entry : readyPool.entrySet()) {
+            if (oldest == null || entry.getValue().addedTime.isBefore(oldest.addedTime)) {
+                oldestKey = entry.getKey();
+                oldest = entry.getValue();
+            }
+        }
+        
+        if (oldestKey != null) {
+            readyPool.remove(oldestKey);
+            logger.info("Evicted oldest connection from SMTP ready pool: " + oldestKey);
         }
     }
     
@@ -237,7 +332,37 @@ public class SmtpConnectionCacheService {
     }
     
     /**
-     * Closes a specific cached connection.
+     * Closes a specific cached connection and moves it to the ready pool.
+     * 
+     * @param host SMTP server host
+     * @param username Username
+     * @param password Password (needed for ready pool)
+     * @param props Connection properties (needed for ready pool)
+     * @return true if connection was found and closed, false otherwise
+     */
+    public boolean closeConnection(String host, String username, String password, Properties props) {
+        String key = SmtpConnectionInfo.generateKey(host, username);
+        
+        SmtpConnectionInfo info = connectionCache.remove(key);
+        if (info != null) {
+            info.close();
+            
+            // Move to ready pool for potential reuse
+            ReadyConnection readyConn = new ReadyConnection(host, username, password, props);
+            readyPool.put(key, readyConn);
+            
+            logger.info("Closed SMTP connection and moved to ready pool: " + key + 
+                       " (active: " + connectionCache.size() + ", ready: " + readyPool.size() + ")");
+            return true;
+        }
+        
+        logger.fine("SMTP connection not found for closing: " + key);
+        return false;
+    }
+    
+    /**
+     * Closes a specific cached connection (legacy method without password/props).
+     * Connection is closed but NOT moved to ready pool.
      * 
      * @param host SMTP server host
      * @param username Username
@@ -249,7 +374,7 @@ public class SmtpConnectionCacheService {
         SmtpConnectionInfo info = connectionCache.remove(key);
         if (info != null) {
             info.close();
-            logger.info("Manually closed SMTP connection: " + key);
+            logger.info("Manually closed SMTP connection (not pooled): " + key);
             return true;
         }
         
