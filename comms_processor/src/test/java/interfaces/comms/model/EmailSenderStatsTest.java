@@ -106,13 +106,62 @@ public class EmailSenderStatsTest {
     }
     
     @Test
+    public void testSuccessTracking() {
+        Map<String, Object> context1 = new HashMap<>();
+        context1.put("to", "recipient1@example.com");
+        
+        Map<String, Object> context2 = new HashMap<>();
+        context2.put("to", "recipient2@example.com");
+        
+        // Record first success
+        stats.recordSuccess("sendEmail", "smtp.example.com", "user@example.com", 
+                1, 2048, 150, context1);
+        
+        // Record second success
+        stats.recordSuccess("sendTextMessage", "smtp.example.com", "user@example.com", 
+                1, 1024, 100, context2);
+        
+        // Verify totals
+        assertEquals(2, stats.getTotalEmailsSent());
+        assertEquals(3072, stats.getTotalSizeBytes());
+        
+        // Verify success history
+        List<EmailSenderStats.SuccessInfo> history = stats.getSuccessHistory();
+        assertEquals(2, history.size());
+        
+        // Most recent first
+        EmailSenderStats.SuccessInfo recent = history.get(0);
+        assertEquals("sendTextMessage", recent.getOperation());
+        assertEquals("smtp.example.com", recent.getHost());
+        assertEquals("user@example.com", recent.getUsername());
+        assertEquals(1, recent.getEmailCount());
+        assertEquals(1024, recent.getSizeBytes());
+        assertEquals(100, recent.getProcessingTimeMs());
+        assertNotNull(recent.getTimestamp());
+        
+        // Verify in map format
+        Map<String, Object> map = stats.toMap();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> successes = (List<Map<String, Object>>) map.get("recentSuccesses");
+        assertEquals(2, successes.size());
+        assertEquals(2, map.get("recentSuccessesCount"));
+        
+        Map<String, Object> recentMap = successes.get(0);
+        assertEquals("sendTextMessage", recentMap.get("operation"));
+        assertEquals(100L, recentMap.get("processingTimeMs"));
+    }
+    
+    @Test
     public void testReset() {
         stats.recordSuccess(10, 5000);
+        stats.recordSuccess("sendEmail", "smtp.example.com", "user@example.com", 
+                5, 3000, 200, null);
         stats.recordError("sendEmail", "smtp.example.com", "user@example.com", 
                 "Error", "Details", null);
         
-        assertEquals(10, stats.getTotalEmailsSent());
+        assertEquals(15, stats.getTotalEmailsSent());
         assertEquals(1, stats.getTotalErrors());
+        assertEquals(1, stats.getSuccessHistory().size());
         
         stats.reset();
         
@@ -120,6 +169,7 @@ public class EmailSenderStatsTest {
         assertEquals(0, stats.getTotalSizeBytes());
         assertEquals(0, stats.getTotalErrors());
         assertEquals(0, stats.getErrorHistory().size());
+        assertEquals(0, stats.getSuccessHistory().size());
     }
     
     @Test

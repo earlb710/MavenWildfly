@@ -15,15 +15,19 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Total size of emails read (in bytes)
  * - Number of errors
  * - Last 20 error requests with full error information
+ * - Last 20 successful operations with timing information
  */
 public class EmailReaderStats {
     private static final int MAX_ERROR_HISTORY = 20;
+    private static final int MAX_SUCCESS_HISTORY = 20;
     
     private final AtomicLong totalEmailsRead = new AtomicLong(0);
     private final AtomicLong totalSizeBytes = new AtomicLong(0);
     private final AtomicLong totalErrors = new AtomicLong(0);
     private final LinkedList<ErrorInfo> errorHistory = new LinkedList<>();
     private final Object errorLock = new Object();
+    private final LinkedList<SuccessInfo> successHistory = new LinkedList<>();
+    private final Object successLock = new Object();
     
     /**
      * Inner class to store error information.
@@ -98,7 +102,86 @@ public class EmailReaderStats {
     }
     
     /**
-     * Records successful email reading.
+     * Inner class to store success information.
+     */
+    public static class SuccessInfo {
+        private final Instant timestamp;
+        private final String operation;
+        private final String host;
+        private final String username;
+        private final String folder;
+        private final long emailCount;
+        private final long sizeBytes;
+        private final long processingTimeMs;
+        private final Map<String, Object> additionalContext;
+        
+        public SuccessInfo(String operation, String host, String username, String folder, long emailCount, long sizeBytes, long processingTimeMs, Map<String, Object> additionalContext) {
+            this.timestamp = Instant.now();
+            this.operation = operation;
+            this.host = host;
+            this.username = username;
+            this.folder = folder;
+            this.emailCount = emailCount;
+            this.sizeBytes = sizeBytes;
+            this.processingTimeMs = processingTimeMs;
+            this.additionalContext = additionalContext != null ? new HashMap<>(additionalContext) : new HashMap<>();
+        }
+        
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("timestamp", timestamp.toString());
+            map.put("operation", operation);
+            map.put("host", host);
+            map.put("username", username);
+            map.put("folder", folder);
+            map.put("emailCount", emailCount);
+            map.put("sizeBytes", sizeBytes);
+            map.put("processingTimeMs", processingTimeMs);
+            if (!additionalContext.isEmpty()) {
+                map.put("context", additionalContext);
+            }
+            return map;
+        }
+        
+        public Instant getTimestamp() {
+            return timestamp;
+        }
+        
+        public String getOperation() {
+            return operation;
+        }
+        
+        public String getHost() {
+            return host;
+        }
+        
+        public String getUsername() {
+            return username;
+        }
+        
+        public String getFolder() {
+            return folder;
+        }
+        
+        public long getEmailCount() {
+            return emailCount;
+        }
+        
+        public long getSizeBytes() {
+            return sizeBytes;
+        }
+        
+        public long getProcessingTimeMs() {
+            return processingTimeMs;
+        }
+        
+        public Map<String, Object> getAdditionalContext() {
+            return new HashMap<>(additionalContext);
+        }
+    }
+    
+    /**
+     * Records successful email reading (backward compatible).
      * 
      * @param emailCount Number of emails read
      * @param sizeBytes Total size of emails read in bytes
@@ -106,6 +189,33 @@ public class EmailReaderStats {
     public void recordSuccess(long emailCount, long sizeBytes) {
         totalEmailsRead.addAndGet(emailCount);
         totalSizeBytes.addAndGet(sizeBytes);
+    }
+    
+    /**
+     * Records successful email reading with timing and context information.
+     * 
+     * @param operation The operation name (e.g., "getMailboxStats", "getMailboxCount")
+     * @param host The IMAP host
+     * @param username The username
+     * @param folder The folder being accessed
+     * @param emailCount Number of emails read
+     * @param sizeBytes Total size of emails read in bytes
+     * @param processingTimeMs Processing time in milliseconds
+     * @param additionalContext Additional context information
+     */
+    public void recordSuccess(String operation, String host, String username, String folder, long emailCount, long sizeBytes, long processingTimeMs, Map<String, Object> additionalContext) {
+        totalEmailsRead.addAndGet(emailCount);
+        totalSizeBytes.addAndGet(sizeBytes);
+        
+        SuccessInfo successInfo = new SuccessInfo(operation, host, username, folder, emailCount, sizeBytes, processingTimeMs, additionalContext);
+        
+        synchronized (successLock) {
+            successHistory.addFirst(successInfo);
+            // Keep only last 20 successes
+            while (successHistory.size() > MAX_SUCCESS_HISTORY) {
+                successHistory.removeLast();
+            }
+        }
     }
     
     /**
@@ -164,6 +274,15 @@ public class EmailReaderStats {
     }
     
     /**
+     * Gets the success history (last 20 successes).
+     */
+    public List<SuccessInfo> getSuccessHistory() {
+        synchronized (successLock) {
+            return new ArrayList<>(successHistory);
+        }
+    }
+    
+    /**
      * Gets all statistics as a map.
      */
     public Map<String, Object> toMap() {
@@ -181,6 +300,15 @@ public class EmailReaderStats {
         map.put("recentErrors", errors);
         map.put("recentErrorsCount", errors.size());
         
+        List<Map<String, Object>> successes = new ArrayList<>();
+        synchronized (successLock) {
+            for (SuccessInfo success : successHistory) {
+                successes.add(success.toMap());
+            }
+        }
+        map.put("recentSuccesses", successes);
+        map.put("recentSuccessesCount", successes.size());
+        
         return map;
     }
     
@@ -193,6 +321,9 @@ public class EmailReaderStats {
         totalErrors.set(0);
         synchronized (errorLock) {
             errorHistory.clear();
+        }
+        synchronized (successLock) {
+            successHistory.clear();
         }
     }
 }

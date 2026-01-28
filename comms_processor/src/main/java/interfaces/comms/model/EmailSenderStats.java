@@ -15,15 +15,19 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Total size of emails sent (in bytes)
  * - Number of errors
  * - Last 20 error requests with full error information
+ * - Last 20 successful operations with timing information
  */
 public class EmailSenderStats {
     private static final int MAX_ERROR_HISTORY = 20;
+    private static final int MAX_SUCCESS_HISTORY = 20;
     
     private final AtomicLong totalEmailsSent = new AtomicLong(0);
     private final AtomicLong totalSizeBytes = new AtomicLong(0);
     private final AtomicLong totalErrors = new AtomicLong(0);
     private final LinkedList<ErrorInfo> errorHistory = new LinkedList<>();
     private final Object errorLock = new Object();
+    private final LinkedList<SuccessInfo> successHistory = new LinkedList<>();
+    private final Object successLock = new Object();
     
     /**
      * Inner class to store error information.
@@ -91,7 +95,79 @@ public class EmailSenderStats {
     }
     
     /**
-     * Records a successful email send.
+     * Inner class to store success information.
+     */
+    public static class SuccessInfo {
+        private final Instant timestamp;
+        private final String operation;
+        private final String host;
+        private final String username;
+        private final long emailCount;
+        private final long sizeBytes;
+        private final long processingTimeMs;
+        private final Map<String, Object> additionalContext;
+        
+        public SuccessInfo(String operation, String host, String username, long emailCount, long sizeBytes, long processingTimeMs, Map<String, Object> additionalContext) {
+            this.timestamp = Instant.now();
+            this.operation = operation;
+            this.host = host;
+            this.username = username;
+            this.emailCount = emailCount;
+            this.sizeBytes = sizeBytes;
+            this.processingTimeMs = processingTimeMs;
+            this.additionalContext = additionalContext != null ? new HashMap<>(additionalContext) : new HashMap<>();
+        }
+        
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("timestamp", timestamp.toString());
+            map.put("operation", operation);
+            map.put("host", host);
+            map.put("username", username);
+            map.put("emailCount", emailCount);
+            map.put("sizeBytes", sizeBytes);
+            map.put("processingTimeMs", processingTimeMs);
+            if (!additionalContext.isEmpty()) {
+                map.put("context", additionalContext);
+            }
+            return map;
+        }
+        
+        public Instant getTimestamp() {
+            return timestamp;
+        }
+        
+        public String getOperation() {
+            return operation;
+        }
+        
+        public String getHost() {
+            return host;
+        }
+        
+        public String getUsername() {
+            return username;
+        }
+        
+        public long getEmailCount() {
+            return emailCount;
+        }
+        
+        public long getSizeBytes() {
+            return sizeBytes;
+        }
+        
+        public long getProcessingTimeMs() {
+            return processingTimeMs;
+        }
+        
+        public Map<String, Object> getAdditionalContext() {
+            return new HashMap<>(additionalContext);
+        }
+    }
+    
+    /**
+     * Records a successful email send (backward compatible).
      * 
      * @param emailCount Number of emails sent
      * @param sizeBytes Total size of emails sent in bytes
@@ -99,6 +175,32 @@ public class EmailSenderStats {
     public void recordSuccess(long emailCount, long sizeBytes) {
         totalEmailsSent.addAndGet(emailCount);
         totalSizeBytes.addAndGet(sizeBytes);
+    }
+    
+    /**
+     * Records a successful email send with timing and context information.
+     * 
+     * @param operation The operation name (e.g., "sendEmail", "sendTextMessage")
+     * @param host The SMTP host
+     * @param username The username
+     * @param emailCount Number of emails sent
+     * @param sizeBytes Total size of emails sent in bytes
+     * @param processingTimeMs Processing time in milliseconds
+     * @param additionalContext Additional context information
+     */
+    public void recordSuccess(String operation, String host, String username, long emailCount, long sizeBytes, long processingTimeMs, Map<String, Object> additionalContext) {
+        totalEmailsSent.addAndGet(emailCount);
+        totalSizeBytes.addAndGet(sizeBytes);
+        
+        SuccessInfo successInfo = new SuccessInfo(operation, host, username, emailCount, sizeBytes, processingTimeMs, additionalContext);
+        
+        synchronized (successLock) {
+            successHistory.addFirst(successInfo);
+            // Keep only last 20 successes
+            while (successHistory.size() > MAX_SUCCESS_HISTORY) {
+                successHistory.removeLast();
+            }
+        }
     }
     
     /**
@@ -156,6 +258,15 @@ public class EmailSenderStats {
     }
     
     /**
+     * Gets the success history (last 20 successes).
+     */
+    public List<SuccessInfo> getSuccessHistory() {
+        synchronized (successLock) {
+            return new ArrayList<>(successHistory);
+        }
+    }
+    
+    /**
      * Gets all statistics as a map.
      */
     public Map<String, Object> toMap() {
@@ -173,6 +284,15 @@ public class EmailSenderStats {
         map.put("recentErrors", errors);
         map.put("recentErrorsCount", errors.size());
         
+        List<Map<String, Object>> successes = new ArrayList<>();
+        synchronized (successLock) {
+            for (SuccessInfo success : successHistory) {
+                successes.add(success.toMap());
+            }
+        }
+        map.put("recentSuccesses", successes);
+        map.put("recentSuccessesCount", successes.size());
+        
         return map;
     }
     
@@ -185,6 +305,9 @@ public class EmailSenderStats {
         totalErrors.set(0);
         synchronized (errorLock) {
             errorHistory.clear();
+        }
+        synchronized (successLock) {
+            successHistory.clear();
         }
     }
 }
