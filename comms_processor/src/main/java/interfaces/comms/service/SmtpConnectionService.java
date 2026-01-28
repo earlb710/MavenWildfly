@@ -476,6 +476,16 @@ public class SmtpConnectionService {
                         emailResult.put("success", false);
                         emailResult.put("error", "Auto-reconnect failed: " + e.getMessage());
                         failureCount++;
+                        
+                        // Record auto-reconnect error in stats
+                        Map<String, Object> errorContext = new HashMap<>();
+                        errorContext.put("batchIndex", i);
+                        errorContext.put("totalBatchSize", dataArray.size());
+                        errorContext.put("reason", "Auto-reconnect failed");
+                        statsService.recordError("sendEmails", smtpHost, smtpUser, 
+                                "Auto-reconnect failed: " + e.getMessage(), 
+                                e.getClass().getName() + ": " + e.getMessage(), errorContext);
+                        
                         results.add(emailResult);
                         continue;
                     }
