@@ -72,8 +72,8 @@ This will create a WAR file at `target/comms_processor.war`
 
 The project includes JSON templates in `comms_processor/src/main/resources/` for common mail settings:
 
-- `imap-default-settings.json` - default IMAP connection and mailbox settings
-- `smtp-default-settings.json` - default SMTP connection and message settings
+- `imap-default-settings.json` - default IMAP connection and mailbox settings (uses port 993 for IMAPS)
+- `smtp-default-settings.json` - default SMTP connection settings (uses port 465 for SMTPS)
 
 ## Deploying to Wildfly
 
