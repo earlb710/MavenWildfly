@@ -2,12 +2,6 @@
   "host": "YOUR_SMTP_HOST",
   "port": 465,
   "protocol": "smtps",
-  "username": "YOUR_EMAIL@example.com",
-  "password": "YOUR_APP_PASSWORD",
-  "fromAddress": "YOUR_EMAIL@example.com",
-  "toAddress": "RECIPIENT@example.com",
-  "subject": "YOUR_SUBJECT",
-  "body": "YOUR_MESSAGE_BODY",
   "connectionTimeoutMs": 10000,
   "writeTimeoutMs": 10000,
   "tlsProtocols": [

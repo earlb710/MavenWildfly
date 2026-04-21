@@ -2,8 +2,6 @@
   "host": "YOUR_IMAP_HOST",
   "port": 993,
   "protocol": "imaps",
-  "username": "YOUR_EMAIL@example.com",
-  "password": "YOUR_APP_PASSWORD",
   "mailboxFolder": "INBOX",
   "connectionTimeoutMs": 10000,
   "readTimeoutMs": 10000,
