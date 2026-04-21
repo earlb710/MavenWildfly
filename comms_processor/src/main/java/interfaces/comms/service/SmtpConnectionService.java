@@ -39,7 +39,7 @@ public class SmtpConnectionService {
     @Inject
     private SmtpConnectionCacheService cacheService;
 
-    private static class ReconnectResult {
+    private static final class ReconnectResult {
         final SmtpConnectionInfo connectionInfo;
         final boolean reconnected;
 
