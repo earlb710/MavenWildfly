@@ -33,7 +33,9 @@ MavenWildfly/
             │           ├── SmtpConnectionService.java      # SMTP connection processing
             │           └── SmtpConnectionCacheService.java # SMTP cache handling
             ├── resources/
-            │   └── database.properties             # Database configuration
+            │   ├── database.properties             # Database configuration
+            │   ├── imap-default-settings.json      # Default IMAP request settings
+            │   └── smtp-default-settings.json      # Default SMTP request settings
             └── webapp/
                 ├── WEB-INF/
                 │   ├── web.xml                     # Web application descriptor
@@ -65,6 +67,13 @@ mvn clean package
 ```
 
 This will create a WAR file at `target/comms_processor.war`
+
+## Default Mail Settings Templates
+
+The project includes JSON templates in `/home/runner/work/MavenWildfly/MavenWildfly/comms_processor/src/main/resources/` for common mail request payloads:
+
+- `imap-default-settings.json` - default IMAP connection and mailbox request fields
+- `smtp-default-settings.json` - default SMTP connection and message request fields
 
 ## Deploying to Wildfly
 

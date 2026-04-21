@@ -1,0 +1,12 @@
+{
+  "connection": {
+    "host": "imap.gmail.com",
+    "username": "user@gmail.com",
+    "password": "app-password"
+  },
+  "mailbox": {
+    "mailboxHost": "imap.gmail.com",
+    "mailboxUser": "user@gmail.com",
+    "mailboxFolder": "INBOX"
+  }
+}

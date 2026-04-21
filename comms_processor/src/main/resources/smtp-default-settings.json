@@ -1,0 +1,16 @@
+{
+  "connection": {
+    "host": "smtp.gmail.com",
+    "username": "user@gmail.com",
+    "password": "app-password",
+    "port": 465
+  },
+  "message": {
+    "smtpHost": "smtp.gmail.com",
+    "smtpUser": "user@gmail.com",
+    "fromAddress": "user@gmail.com",
+    "toAddress": "recipient@example.com",
+    "subject": "Test Email",
+    "body": "This is a test email."
+  }
+}
