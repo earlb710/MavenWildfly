@@ -32,6 +32,8 @@ public class SmtpConnectionService {
     private static final int DEFAULT_SMTP_PORT = 465; // SMTPS port
     private static final int DEFAULT_MAX_BATCH_SIZE = 100;
     private static final int DEFAULT_MIN_BATCH_SIZE = 1;
+    private static final String AUTO_RECONNECT_MESSAGE_TEMPLATE =
+            "SMTP connection automatically reconnected after reaching max batch size (%d)";
     
     private final int maxBatchSize;
     private final int minBatchSize;
@@ -266,9 +268,10 @@ public class SmtpConnectionService {
             result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
             result.put("maxBatchSize", maxBatchSize);
 
-            if (reconnectResult.reconnected) {
-                result.put("reconnectCount", 1);
-                result.put("message", "SMTP connection automatically reconnected after reaching max batch size (" + maxBatchSize + ")");
+            int reconnectCount = reconnectResult.reconnected ? 1 : 0;
+            if (reconnectCount > 0) {
+                result.put("reconnectCount", reconnectCount);
+                result.put("message", String.format(AUTO_RECONNECT_MESSAGE_TEMPLATE, maxBatchSize));
             }
              
             logger.info("Text email sent successfully - from: " + fromAddress + ", to: " + toAddress + ", sendTime: " + sendTime + "ms, emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect());
@@ -352,9 +355,10 @@ public class SmtpConnectionService {
             result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
             result.put("maxBatchSize", maxBatchSize);
 
-            if (reconnectResult.reconnected) {
-                result.put("reconnectCount", 1);
-                result.put("message", "SMTP connection automatically reconnected after reaching max batch size (" + maxBatchSize + ")");
+            int reconnectCount = reconnectResult.reconnected ? 1 : 0;
+            if (reconnectCount > 0) {
+                result.put("reconnectCount", reconnectCount);
+                result.put("message", String.format(AUTO_RECONNECT_MESSAGE_TEMPLATE, maxBatchSize));
             }
              
             logger.info(".eml email sent successfully - host: " + smtpHost + ", user: " + smtpUser + ", dataSize: " + sendResult.get("dataSize") + " bytes, sendTime: " + sendTime + "ms, emailsSentSinceConnect: " + connectionInfo.getEmailsSentSinceConnect());
