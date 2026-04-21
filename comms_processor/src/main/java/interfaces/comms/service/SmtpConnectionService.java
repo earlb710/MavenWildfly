@@ -38,6 +38,16 @@ public class SmtpConnectionService {
     
     @Inject
     private SmtpConnectionCacheService cacheService;
+
+    private static class ReconnectResult {
+        final SmtpConnectionInfo connectionInfo;
+        final boolean reconnected;
+
+        ReconnectResult(SmtpConnectionInfo connectionInfo, boolean reconnected) {
+            this.connectionInfo = connectionInfo;
+            this.reconnected = reconnected;
+        }
+    }
     
     public SmtpConnectionService() {
         // Read system properties for batch control
@@ -225,8 +235,6 @@ public class SmtpConnectionService {
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
             }
-
-            connectionInfo = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
              
             // Create message
             Properties props = getSmtpProperties(smtpHost, DEFAULT_SMTP_PORT);
@@ -244,9 +252,8 @@ public class SmtpConnectionService {
              
             // Increment email counter
             connectionInfo.incrementEmailsSent();
-            SmtpConnectionInfo activeConnection = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
-            boolean autoReconnected = activeConnection != connectionInfo;
-            connectionInfo = activeConnection;
+            ReconnectResult reconnectResult = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
+            connectionInfo = reconnectResult.connectionInfo;
              
             long sendTime = System.currentTimeMillis() - startTime;
              
@@ -259,7 +266,7 @@ public class SmtpConnectionService {
             result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
             result.put("maxBatchSize", maxBatchSize);
 
-            if (autoReconnected) {
+            if (reconnectResult.reconnected) {
                 result.put("reconnectCount", 1);
                 result.put("message", "SMTP connection automatically reconnected after reaching max batch size (" + maxBatchSize + ")");
             }
@@ -323,8 +330,6 @@ public class SmtpConnectionService {
                 result.put("error", "Connection not open. Use /api/smtp/open to establish a connection first");
                 return result;
             }
-
-            connectionInfo = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
              
             // Process and send the email
             Map<String, Object> sendResult = processAndSendEmail(smtpHost, connectionInfo, data);
@@ -334,9 +339,8 @@ public class SmtpConnectionService {
              
             // Increment email counter
             connectionInfo.incrementEmailsSent();
-            SmtpConnectionInfo activeConnection = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
-            boolean autoReconnected = activeConnection != connectionInfo;
-            connectionInfo = activeConnection;
+            ReconnectResult reconnectResult = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
+            connectionInfo = reconnectResult.connectionInfo;
              
             long sendTime = System.currentTimeMillis() - startTime;
              
@@ -348,7 +352,7 @@ public class SmtpConnectionService {
             result.put("emailsSentSinceConnect", connectionInfo.getEmailsSentSinceConnect());
             result.put("maxBatchSize", maxBatchSize);
 
-            if (autoReconnected) {
+            if (reconnectResult.reconnected) {
                 result.put("reconnectCount", 1);
                 result.put("message", "SMTP connection automatically reconnected after reaching max batch size (" + maxBatchSize + ")");
             }
@@ -433,21 +437,6 @@ public class SmtpConnectionService {
                 String data = dataArray.get(i);
                 Map<String, Object> emailResult = new HashMap<>();
                 emailResult.put("index", i);
-
-                try {
-                    SmtpConnectionInfo activeConnection = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
-                    if (activeConnection != connectionInfo) {
-                        reconnectCount++;
-                    }
-                    connectionInfo = activeConnection;
-                } catch (Exception e) {
-                    logger.severe("Failed to auto-reconnect before batch send: " + e.getMessage());
-                    emailResult.put("success", false);
-                    emailResult.put("error", "Auto-reconnect failed: " + e.getMessage());
-                    failureCount++;
-                    results.add(emailResult);
-                    continue;
-                }
                  
                 if (data == null || data.trim().isEmpty()) {
                     logger.warning("Email at index " + i + " has empty data - skipping");
@@ -467,11 +456,11 @@ public class SmtpConnectionService {
                         
                         // Increment email counter (thread-safe)
                         connectionInfo.incrementEmailsSent();
-                        SmtpConnectionInfo activeConnection = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
-                        if (activeConnection != connectionInfo) {
+                        ReconnectResult reconnectResult = reconnectIfThresholdReached(smtpHost, smtpUser, connectionInfo);
+                        if (reconnectResult.reconnected) {
                             reconnectCount++;
                         }
-                        connectionInfo = activeConnection;
+                        connectionInfo = reconnectResult.connectionInfo;
                         logger.fine("Email at index " + i + " sent successfully - dataSize: " + dataSize + " bytes");
                     } else {
                         emailResult.put("error", sendResult.get("error"));
@@ -595,9 +584,9 @@ public class SmtpConnectionService {
     /**
      * Reconnects the SMTP transport when the configured send threshold has been reached.
      */
-    private SmtpConnectionInfo reconnectIfThresholdReached(String smtpHost, String smtpUser, SmtpConnectionInfo connectionInfo) throws Exception {
+    private ReconnectResult reconnectIfThresholdReached(String smtpHost, String smtpUser, SmtpConnectionInfo connectionInfo) throws Exception {
         if (connectionInfo == null || maxBatchSize <= 0 || connectionInfo.getEmailsSentSinceConnect() < maxBatchSize) {
-            return connectionInfo;
+            return new ReconnectResult(connectionInfo, false);
         }
 
         String password = connectionInfo.getPassword();
@@ -608,7 +597,10 @@ public class SmtpConnectionService {
         int port = connectionInfo.getPort() > 0 ? connectionInfo.getPort() : DEFAULT_SMTP_PORT;
         logger.info("SMTP send threshold reached for host: " + smtpHost + ", user: " + smtpUser +
                 ". Disconnecting and reconnecting after " + connectionInfo.getEmailsSentSinceConnect() + " emails.");
-        return cacheService.reconnect(smtpHost, smtpUser, password, getSmtpProperties(smtpHost, port));
+        return new ReconnectResult(
+                cacheService.reconnect(smtpHost, smtpUser, password, getSmtpProperties(smtpHost, port)),
+                true
+        );
     }
     
     /**
