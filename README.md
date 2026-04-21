@@ -7,27 +7,38 @@ A Java EE web application configured for deployment to Wildfly application serve
 ## Project Structure
 
 ```
-comms_processor/
-├── pom.xml                                 # Maven configuration
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/example/comms/
-│   │   │       ├── rest/
-│   │   │       │   ├── RestApplication.java    # JAX-RS Application configuration
-│   │   │       │   └── StatusResource.java     # REST endpoints for status
-│   │   │       └── service/
-│   │   │           └── WildFlyManagementService.java # WildFly management service
-│   │   ├── resources/
-│   │   │   └── database.properties        # Database configuration
-│   │   └── webapp/
-│   │       ├── WEB-INF/
-│   │       │   ├── web.xml               # Web application descriptor
-│   │       │   └── beans.xml             # CDI configuration
-│   │       └── index.html                # Welcome page
-│   └── test/
-│       ├── java/                          # Test source files
-│       └── resources/                     # Test resources
+MavenWildfly/
+├── README.md                                     # Project overview and setup guide
+├── TESTING.md                                    # Manual API testing instructions
+└── comms_processor/
+    ├── pom.xml                                   # Maven configuration
+    ├── nb-configuration.xml                      # NetBeans project settings
+    └── src/
+        └── main/
+            ├── java/
+            │   └── interfaces/comms/
+            │       ├── model/
+            │       │   ├── ImapConnectionInfo.java   # IMAP connection request model
+            │       │   └── SmtpConnectionInfo.java   # SMTP connection request model
+            │       ├── rest/
+            │       │   ├── RestApplication.java      # JAX-RS application configuration
+            │       │   ├── StatusHtmlResource.java   # HTML status page endpoint
+            │       │   ├── StatusResource.java       # Status REST endpoints
+            │       │   ├── ImapConnectionResource.java # IMAP REST endpoints
+            │       │   └── SmtpConnectionResource.java # SMTP REST endpoints
+            │       └── service/
+            │           ├── WildFlyManagementService.java   # WildFly management operations
+            │           ├── ImapConnectionService.java      # IMAP connection processing
+            │           ├── ImapConnectionCacheService.java # IMAP cache handling
+            │           ├── SmtpConnectionService.java      # SMTP connection processing
+            │           └── SmtpConnectionCacheService.java # SMTP cache handling
+            ├── resources/
+            │   └── database.properties             # Database configuration
+            └── webapp/
+                ├── WEB-INF/
+                │   ├── web.xml                     # Web application descriptor
+                │   └── beans.xml                   # CDI configuration
+                └── index.html                      # Welcome page
 ```
 
 ## Prerequisites
