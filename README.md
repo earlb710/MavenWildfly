@@ -70,10 +70,10 @@ This will create a WAR file at `target/comms_processor.war`
 
 ## Default Mail Settings Templates
 
-The project includes JSON templates in `/home/runner/work/MavenWildfly/MavenWildfly/comms_processor/src/main/resources/` for common mail request payloads:
+The project includes JSON templates in `comms_processor/src/main/resources/` for common mail settings:
 
-- `imap-default-settings.json` - default IMAP connection and mailbox request fields
-- `smtp-default-settings.json` - default SMTP connection and message request fields
+- `imap-default-settings.json` - default IMAP connection and mailbox settings
+- `smtp-default-settings.json` - default SMTP connection and message settings
 
 ## Deploying to Wildfly
 

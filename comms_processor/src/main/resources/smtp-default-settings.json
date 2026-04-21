@@ -1,16 +1,17 @@
 {
-  "connection": {
-    "host": "smtp.gmail.com",
-    "username": "user@gmail.com",
-    "password": "app-password",
-    "port": 465
-  },
-  "message": {
-    "smtpHost": "smtp.gmail.com",
-    "smtpUser": "user@gmail.com",
-    "fromAddress": "user@gmail.com",
-    "toAddress": "recipient@example.com",
-    "subject": "Test Email",
-    "body": "This is a test email."
-  }
+  "host": "smtp.gmail.com",
+  "port": 465,
+  "protocol": "smtps",
+  "username": "user@gmail.com",
+  "password": "app-password",
+  "fromAddress": "user@gmail.com",
+  "toAddress": "recipient@example.com",
+  "subject": "Test Email",
+  "body": "This is a test email.",
+  "connectionTimeoutMs": 10000,
+  "writeTimeoutMs": 10000,
+  "tlsProtocols": [
+    "TLSv1.2",
+    "TLSv1.3"
+  ]
 }

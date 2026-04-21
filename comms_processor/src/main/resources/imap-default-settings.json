@@ -1,12 +1,14 @@
 {
-  "connection": {
-    "host": "imap.gmail.com",
-    "username": "user@gmail.com",
-    "password": "app-password"
-  },
-  "mailbox": {
-    "mailboxHost": "imap.gmail.com",
-    "mailboxUser": "user@gmail.com",
-    "mailboxFolder": "INBOX"
-  }
+  "host": "imap.gmail.com",
+  "port": 993,
+  "protocol": "imaps",
+  "username": "user@gmail.com",
+  "password": "app-password",
+  "mailboxFolder": "INBOX",
+  "connectionTimeoutMs": 10000,
+  "readTimeoutMs": 10000,
+  "tlsProtocols": [
+    "TLSv1.2",
+    "TLSv1.3"
+  ]
 }
