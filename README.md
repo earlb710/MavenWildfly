@@ -7,27 +7,40 @@ A Java EE web application configured for deployment to Wildfly application serve
 ## Project Structure
 
 ```
-comms_processor/
-├── pom.xml                                 # Maven configuration
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/example/comms/
-│   │   │       ├── rest/
-│   │   │       │   ├── RestApplication.java    # JAX-RS Application configuration
-│   │   │       │   └── StatusResource.java     # REST endpoints for status
-│   │   │       └── service/
-│   │   │           └── WildFlyManagementService.java # WildFly management service
-│   │   ├── resources/
-│   │   │   └── database.properties        # Database configuration
-│   │   └── webapp/
-│   │       ├── WEB-INF/
-│   │       │   ├── web.xml               # Web application descriptor
-│   │       │   └── beans.xml             # CDI configuration
-│   │       └── index.html                # Welcome page
-│   └── test/
-│       ├── java/                          # Test source files
-│       └── resources/                     # Test resources
+MavenWildfly/
+├── README.md                                     # Project overview and setup guide
+├── TESTING.md                                    # Manual API testing instructions
+└── comms_processor/
+    ├── pom.xml                                   # Maven configuration
+    ├── nb-configuration.xml                      # NetBeans project settings
+    └── src/
+        └── main/
+            ├── java/
+            │   └── interfaces/comms/
+            │       ├── model/
+            │       │   ├── ImapConnectionInfo.java   # IMAP connection request model
+            │       │   └── SmtpConnectionInfo.java   # SMTP connection request model
+            │       ├── rest/
+            │       │   ├── RestApplication.java      # JAX-RS application configuration
+            │       │   ├── StatusHtmlResource.java   # HTML status page endpoint
+            │       │   ├── StatusResource.java       # Status REST endpoints
+            │       │   ├── ImapConnectionResource.java # IMAP REST endpoints
+            │       │   └── SmtpConnectionResource.java # SMTP REST endpoints
+            │       └── service/
+            │           ├── WildFlyManagementService.java   # WildFly management operations
+            │           ├── ImapConnectionService.java      # IMAP connection processing
+            │           ├── ImapConnectionCacheService.java # IMAP cache handling
+            │           ├── SmtpConnectionService.java      # SMTP connection processing
+            │           └── SmtpConnectionCacheService.java # SMTP cache handling
+            ├── resources/
+            │   ├── database.properties             # Database configuration
+            │   ├── imap-default-settings.json      # Default IMAP request settings
+            │   └── smtp-default-settings.json      # Default SMTP request settings
+            └── webapp/
+                ├── WEB-INF/
+                │   ├── web.xml                     # Web application descriptor
+                │   └── beans.xml                   # CDI configuration
+                └── index.html                      # Welcome page
 ```
 
 ## Prerequisites
@@ -54,6 +67,13 @@ mvn clean package
 ```
 
 This will create a WAR file at `target/comms_processor.war`
+
+## Default Mail Settings Templates
+
+The project includes JSON templates in `comms_processor/src/main/resources/` for common mail settings. These files are used only as fallback defaults when a request omits a supported value:
+
+- `imap-default-settings.json` - default IMAP connection and mailbox settings (uses port 993 for IMAPS)
+- `smtp-default-settings.json` - default SMTP connection settings (uses port 465 for SMTPS)
 
 ## Deploying to Wildfly
 

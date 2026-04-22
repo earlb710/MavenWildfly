@@ -1,0 +1,11 @@
+{
+  "host": "YOUR_SMTP_HOST",
+  "port": 465,
+  "protocol": "smtps",
+  "connectionTimeoutMs": 10000,
+  "writeTimeoutMs": 10000,
+  "tlsProtocols": [
+    "TLSv1.2",
+    "TLSv1.3"
+  ]
+}

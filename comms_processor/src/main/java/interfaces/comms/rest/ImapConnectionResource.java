@@ -1,9 +1,10 @@
 package interfaces.comms.rest;
 
-import interfaces.comms.service.ImapConnectionCacheService;
-import interfaces.comms.service.ImapConnectionService;
 import interfaces.comms.service.EmailProcessingService;
 import interfaces.comms.service.EmailProcessor;
+import interfaces.comms.service.ImapConnectionCacheService;
+import interfaces.comms.service.ImapConnectionService;
+import interfaces.comms.service.MailSettingsDefaultsService;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -38,6 +39,9 @@ public class ImapConnectionResource {
     @Inject
     private EmailProcessingService emailProcessingService;
 
+    @Inject
+    private MailSettingsDefaultsService defaultSettingsService;
+
     /**
      * Tests IMAPS connection with provided credentials.
      * Does NOT cache the connection. Includes connection timing.
@@ -65,9 +69,10 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String host = request.get("host");
-        String username = request.get("username");
-        String password = request.get("password");
+        Map<String, String> resolvedRequest = defaultSettingsService.applyImapDefaults(request);
+        String host = resolvedRequest.get("host");
+        String username = resolvedRequest.get("username");
+        String password = resolvedRequest.get("password");
         
         // Test the connection (not cached)
         Map<String, Object> result = imapConnectionService.testConnection(host, username, password);
@@ -107,9 +112,10 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String host = request.get("host");
-        String username = request.get("username");
-        String password = request.get("password");
+        Map<String, String> resolvedRequest = defaultSettingsService.applyImapDefaults(request);
+        String host = resolvedRequest.get("host");
+        String username = resolvedRequest.get("username");
+        String password = resolvedRequest.get("password");
         
         Map<String, Object> result = imapConnectionService.openConnection(host, username, password);
         
@@ -147,8 +153,9 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String host = request.get("host");
-        String username = request.get("username");
+        Map<String, String> resolvedRequest = defaultSettingsService.applyImapDefaults(request);
+        String host = resolvedRequest.get("host");
+        String username = resolvedRequest.get("username");
         
         Map<String, Object> result = imapConnectionService.closeConnection(host, username);
         
@@ -182,9 +189,10 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String mailboxHost = request.get("mailboxHost");
-        String mailboxUser = request.get("mailboxUser");
-        String mailboxFolder = request.get("mailboxFolder"); // Optional, defaults to INBOX
+        Map<String, String> resolvedRequest = defaultSettingsService.applyImapDefaults(request);
+        String mailboxHost = resolvedRequest.get("mailboxHost");
+        String mailboxUser = resolvedRequest.get("mailboxUser");
+        String mailboxFolder = resolvedRequest.get("mailboxFolder"); // Optional, defaults to INBOX
         
         Map<String, Object> result = imapConnectionService.getMailboxCount(mailboxHost, mailboxUser, mailboxFolder);
         
@@ -224,9 +232,10 @@ public class ImapConnectionResource {
                     .build();
         }
         
-        String mailboxHost = request.get("mailboxHost");
-        String mailboxUser = request.get("mailboxUser");
-        String mailboxFolder = request.get("mailboxFolder"); // Optional, defaults to INBOX
+        Map<String, String> resolvedRequest = defaultSettingsService.applyImapDefaults(request);
+        String mailboxHost = resolvedRequest.get("mailboxHost");
+        String mailboxUser = resolvedRequest.get("mailboxUser");
+        String mailboxFolder = resolvedRequest.get("mailboxFolder"); // Optional, defaults to INBOX
         
         Map<String, Object> result = imapConnectionService.getMailboxStats(mailboxHost, mailboxUser, mailboxFolder);
         
