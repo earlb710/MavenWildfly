@@ -111,11 +111,47 @@ public class StatusResource {
             imapMailboxStats.put("description", "Returns detailed statistics for emails in a folder");
             statusEndpoints.add(imapMailboxStats);
             
+            Map<String, String> imapOldestMessage = new HashMap<>();
+            imapOldestMessage.put("path", "/api/imap/oldestMessage");
+            imapOldestMessage.put("method", "POST");
+            imapOldestMessage.put("description", "Returns the oldest message from a folder by received date");
+            statusEndpoints.add(imapOldestMessage);
+            
+            Map<String, String> imapNewestMessage = new HashMap<>();
+            imapNewestMessage.put("path", "/api/imap/newestMessage");
+            imapNewestMessage.put("method", "POST");
+            imapNewestMessage.put("description", "Returns the newest message from a folder by received date");
+            statusEndpoints.add(imapNewestMessage);
+            
+            Map<String, String> imapProcessMessages = new HashMap<>();
+            imapProcessMessages.put("path", "/api/imap/processMessages");
+            imapProcessMessages.put("method", "POST");
+            imapProcessMessages.put("description", "Process messages from a mailbox using multiple threads and a custom EmailProcessor implementation");
+            statusEndpoints.add(imapProcessMessages);
+            
             Map<String, String> imapStatus = new HashMap<>();
             imapStatus.put("path", "/api/imap/status");
             imapStatus.put("method", "GET");
             imapStatus.put("description", "Returns the status of the IMAPS connection cache");
             statusEndpoints.add(imapStatus);
+            
+            Map<String, String> imapStats = new HashMap<>();
+            imapStats.put("path", "/api/imap/stats");
+            imapStats.put("method", "GET");
+            imapStats.put("description", "Returns email reader statistics (total emails read, size, errors, and last 20 errors)");
+            statusEndpoints.add(imapStats);
+            
+            Map<String, String> imapStatusHtml = new HashMap<>();
+            imapStatusHtml.put("path", "/api/imap/status.html");
+            imapStatusHtml.put("method", "GET");
+            imapStatusHtml.put("description", "HTML version of IMAPS connection cache status for browser viewing");
+            statusEndpoints.add(imapStatusHtml);
+            
+            Map<String, String> imapStatsHtml = new HashMap<>();
+            imapStatsHtml.put("path", "/api/imap/stats.html");
+            imapStatsHtml.put("method", "GET");
+            imapStatsHtml.put("description", "HTML version of email reader statistics for browser viewing");
+            statusEndpoints.add(imapStatsHtml);
             
             // SMTP endpoints
             Map<String, String> smtpOpen = new HashMap<>();
@@ -147,6 +183,24 @@ public class StatusResource {
             smtpStatus.put("method", "GET");
             smtpStatus.put("description", "Returns the status of the SMTP connection cache");
             statusEndpoints.add(smtpStatus);
+            
+            Map<String, String> smtpStats = new HashMap<>();
+            smtpStats.put("path", "/api/smtp/stats");
+            smtpStats.put("method", "GET");
+            smtpStats.put("description", "Returns email sender statistics (total emails sent, size, errors, and last 20 errors)");
+            statusEndpoints.add(smtpStats);
+            
+            Map<String, String> smtpStatusHtml = new HashMap<>();
+            smtpStatusHtml.put("path", "/api/smtp/status.html");
+            smtpStatusHtml.put("method", "GET");
+            smtpStatusHtml.put("description", "HTML version of SMTP connection cache status for browser viewing");
+            statusEndpoints.add(smtpStatusHtml);
+            
+            Map<String, String> smtpStatsHtml = new HashMap<>();
+            smtpStatsHtml.put("path", "/api/smtp/stats.html");
+            smtpStatsHtml.put("method", "GET");
+            smtpStatsHtml.put("description", "HTML version of email sender statistics for browser viewing");
+            statusEndpoints.add(smtpStatsHtml);
             
             response.put("availableEndpoints", statusEndpoints);
             response.put("totalEndpoints", statusEndpoints.size());

@@ -631,6 +631,80 @@ curl http://localhost:8080/comms_processor/api/imap/status
 - **Statistics tracking**: Usage count and last access time for each connection tracked for the last 24 hours
 - **Batch processing**: Configurable via `email-reader.minBatchSize` (default: 1) and `email-reader.maxBatchSize` (default: 100)
 
+#### 7. IMAPS Email Reader Statistics
+
+**Endpoint:** `GET /api/imap/stats`
+
+**Description:** Returns statistics about email reading operations, including total emails read, total size, error count, and the last 20 errors with full context.
+
+**Response Example:**
+```json
+{
+  "totalEmailsRead": 1250,
+  "totalSizeBytes": 35678900,
+  "totalErrors": 3,
+  "recentErrorsCount": 3,
+  "recentErrors": [
+    {
+      "timestamp": "2026-01-28T07:52:30Z",
+      "operation": "getMailboxStats",
+      "host": "imap.gmail.com",
+      "username": "user@gmail.com",
+      "folder": "INBOX",
+      "errorMessage": "Connection timeout",
+      "errorDetails": "IOException: Connection timeout after 10000ms",
+      "context": {
+        "messageCount": 100
+      }
+    }
+  ],
+  "timestamp": 1706012345678
+}
+```
+
+**Usage Example:**
+```bash
+curl http://localhost:8080/comms_processor/api/imap/stats
+```
+
+**What's Tracked:**
+- **Total emails read**: Cumulative count of all emails processed via mailboxCount and mailboxStats operations
+- **Total size in bytes**: Cumulative size of all emails processed
+- **Total errors**: Count of all errors encountered during email reading operations
+- **Recent errors**: Last 20 errors with full details including timestamp, operation type, host, username, folder, error message, error details, and additional context
+
+#### 8. IMAPS Connection Status (HTML)
+
+**Endpoint:** `GET /api/imap/status.html`
+
+**Description:** Browser-friendly HTML version of IMAPS connection cache status.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/imap/status.html`
+
+**Features:**
+- Visual summary of cache statistics
+- Interactive table showing all active connections
+- Connection status indicators (connected/disconnected)
+- Clickable navigation links
+- Auto-refresh option
+
+#### 9. IMAPS Email Reader Statistics (HTML)
+
+**Endpoint:** `GET /api/imap/stats.html`
+
+**Description:** Browser-friendly HTML version of email reader statistics.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/imap/stats.html`
+
+**Features:**
+- Large visual display of key statistics
+- Detailed error table with timestamps
+- Human-readable size formatting (bytes to KB/MB/GB)
+- Clickable navigation to related pages
+- Consistent styling with other HTML pages
+
 ### SMTP Connection Endpoints
 
 Base URL: `http://localhost:8080/comms_processor/api/smtp`
@@ -1004,6 +1078,80 @@ curl http://localhost:8080/comms_processor/api/smtp/status
 - **Connection reuse**: Existing connections are reused when the same host/username is requested
 - **Eviction policy**: When cache is full, the least recently used connection is closed
 - **Statistics tracking**: Usage count and last access time for each connection tracked for the last 24 hours
+
+#### 6. SMTP Email Sender Statistics
+
+**Endpoint:** `GET /api/smtp/stats`
+
+**Description:** Returns statistics about email sending operations, including total emails sent, total size, error count, and the last 20 errors with full context.
+
+**Response Example:**
+```json
+{
+  "totalEmailsSent": 2340,
+  "totalSizeBytes": 67890123,
+  "totalErrors": 5,
+  "recentErrorsCount": 5,
+  "recentErrors": [
+    {
+      "timestamp": "2026-01-28T07:52:30Z",
+      "operation": "sendEmails",
+      "host": "smtp.gmail.com",
+      "username": "user@gmail.com",
+      "errorMessage": "Connection timeout",
+      "errorDetails": "IOException: Connection timeout after 10000ms",
+      "context": {
+        "batchIndex": 42,
+        "totalBatchSize": 100
+      }
+    }
+  ],
+  "timestamp": 1706012345678
+}
+```
+
+**Usage Example:**
+```bash
+curl http://localhost:8080/comms_processor/api/smtp/stats
+```
+
+**What's Tracked:**
+- **Total emails sent**: Cumulative count of all emails sent via sendEmail, sendTextMessage, and sendEmails operations
+- **Total size in bytes**: Cumulative size of all emails sent
+- **Total errors**: Count of all errors encountered during email sending operations (including auto-reconnect failures)
+- **Recent errors**: Last 20 errors with full details including timestamp, operation type, host, username, error message, error details, and additional context (e.g., batch index, email addresses)
+
+#### 7. SMTP Connection Status (HTML)
+
+**Endpoint:** `GET /api/smtp/status.html`
+
+**Description:** Browser-friendly HTML version of SMTP connection cache status.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/smtp/status.html`
+
+**Features:**
+- Visual summary of cache statistics
+- Interactive table showing all active connections
+- Connection status indicators (connected/disconnected)
+- Clickable navigation links
+- Auto-refresh option
+
+#### 8. SMTP Email Sender Statistics (HTML)
+
+**Endpoint:** `GET /api/smtp/stats.html`
+
+**Description:** Browser-friendly HTML version of email sender statistics.
+
+**Usage Example:**
+Open in browser: `http://localhost:8080/comms_processor/api/smtp/stats.html`
+
+**Features:**
+- Large visual display of key statistics
+- Detailed error table with timestamps
+- Human-readable size formatting (bytes to KB/MB/GB)
+- Clickable navigation to related pages
+- Consistent styling with other HTML pages
 
 ## System Properties
 
