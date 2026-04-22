@@ -1,0 +1,12 @@
+{
+  "host": "YOUR_IMAP_HOST",
+  "port": 993,
+  "protocol": "imaps",
+  "mailboxFolder": "INBOX",
+  "connectionTimeoutMs": 10000,
+  "readTimeoutMs": 10000,
+  "tlsProtocols": [
+    "TLSv1.2",
+    "TLSv1.3"
+  ]
+}

@@ -2,6 +2,7 @@ package interfaces.comms.rest;
 
 import interfaces.comms.service.SmtpConnectionCacheService;
 import interfaces.comms.service.SmtpConnectionService;
+import interfaces.comms.service.MailSettingsDefaultsService;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -30,6 +31,9 @@ public class SmtpConnectionResource {
     @Inject
     private SmtpConnectionCacheService cacheService;
 
+    @Inject
+    private MailSettingsDefaultsService defaultSettingsService;
+
     /**
      * Opens a cached SMTP connection.
      * 
@@ -57,10 +61,11 @@ public class SmtpConnectionResource {
                     .build();
         }
         
-        String host = (String) request.get("host");
-        String username = (String) request.get("username");
-        String password = (String) request.get("password");
-        Integer port = request.get("port") != null ? ((Number) request.get("port")).intValue() : null;
+        Map<String, Object> resolvedRequest = defaultSettingsService.applySmtpDefaults(request);
+        String host = (String) resolvedRequest.get("host");
+        String username = (String) resolvedRequest.get("username");
+        String password = (String) resolvedRequest.get("password");
+        Integer port = resolvedRequest.get("port") != null ? ((Number) resolvedRequest.get("port")).intValue() : null;
         
         Map<String, Object> result = smtpConnectionService.openConnection(host, username, password, port);
         
@@ -98,8 +103,9 @@ public class SmtpConnectionResource {
                     .build();
         }
         
-        String host = request.get("host");
-        String username = request.get("username");
+        Map<String, String> resolvedRequest = defaultSettingsService.applySmtpDefaultsToStringMap(request);
+        String host = resolvedRequest.get("host");
+        String username = resolvedRequest.get("username");
         
         Map<String, Object> result = smtpConnectionService.closeConnection(host, username);
         
@@ -136,12 +142,13 @@ public class SmtpConnectionResource {
                     .build();
         }
         
-        String smtpHost = request.get("smtpHost");
-        String smtpUser = request.get("smtpUser");
-        String fromAddress = request.get("fromAddress");
-        String toAddress = request.get("toAddress");
-        String subject = request.get("subject");
-        String body = request.get("body");
+        Map<String, String> resolvedRequest = defaultSettingsService.applySmtpDefaultsToStringMap(request);
+        String smtpHost = resolvedRequest.get("smtpHost");
+        String smtpUser = resolvedRequest.get("smtpUser");
+        String fromAddress = resolvedRequest.get("fromAddress");
+        String toAddress = resolvedRequest.get("toAddress");
+        String subject = resolvedRequest.get("subject");
+        String body = resolvedRequest.get("body");
         
         Map<String, Object> result = smtpConnectionService.sendTextMessage(
             smtpHost, smtpUser, fromAddress, toAddress, subject, body);
@@ -193,9 +200,10 @@ public class SmtpConnectionResource {
                     .build();
         }
         
-        String smtpHost = (String) request.get("smtpHost");
-        String smtpUser = (String) request.get("smtpUser");
-        Object dataField = request.get("data");
+        Map<String, Object> resolvedRequest = defaultSettingsService.applySmtpDefaults(request);
+        String smtpHost = (String) resolvedRequest.get("smtpHost");
+        String smtpUser = (String) resolvedRequest.get("smtpUser");
+        Object dataField = resolvedRequest.get("data");
         
         Map<String, Object> result;
         
