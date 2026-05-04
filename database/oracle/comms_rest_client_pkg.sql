@@ -80,6 +80,7 @@ SHOW ERRORS PACKAGE comms_rest_client
 
 CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
   c_chunk_size CONSTANT PLS_INTEGER := 32767;
+  c_default_timeout_seconds CONSTANT PLS_INTEGER := 30;
 
   FUNCTION trim_trailing_slash(p_value IN VARCHAR2) RETURN VARCHAR2 IS
   BEGIN
@@ -157,11 +158,13 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
       RAISE_APPLICATION_ERROR(-20002, 'Basic authentication requires an HTTPS base URL');
     END IF;
 
+    DBMS_LOB.CREATETEMPORARY(l_result, TRUE);
+
     IF p_wallet_path IS NOT NULL THEN
       UTL_HTTP.SET_WALLET(p_wallet_path, p_wallet_password);
     END IF;
 
-    UTL_HTTP.SET_TRANSFER_TIMEOUT(GREATEST(1, NVL(CEIL(p_timeout_seconds), 30)));
+    UTL_HTTP.SET_TRANSFER_TIMEOUT(GREATEST(1, NVL(CEIL(p_timeout_seconds), c_default_timeout_seconds)));
     UTL_HTTP.SET_RESPONSE_ERROR_CHECK(FALSE);
 
     l_request := UTL_HTTP.BEGIN_REQUEST(l_url, UPPER(NVL(p_method, 'GET')), 'HTTP/1.1');
@@ -184,11 +187,7 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     BEGIN
       LOOP
         UTL_HTTP.READ_TEXT(l_response, l_buffer, c_chunk_size);
-        IF l_result IS NULL THEN
-          l_result := l_buffer;
-        ELSE
-          l_result := l_result || l_buffer;
-        END IF;
+        DBMS_LOB.WRITEAPPEND(l_result, LENGTH(l_buffer), l_buffer);
       END LOOP;
     EXCEPTION
       WHEN UTL_HTTP.END_OF_BODY THEN
@@ -196,6 +195,8 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     END;
 
     UTL_HTTP.END_RESPONSE(l_response);
+    -- Return the temporary CLOB to the caller; Oracle releases it when the
+    -- caller/session releases the returned locator.
     RETURN l_result;
   EXCEPTION
     WHEN OTHERS THEN
@@ -205,6 +206,10 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
         WHEN OTHERS THEN
           NULL;
       END;
+
+      IF l_result IS NOT NULL AND DBMS_LOB.ISTEMPORARY(l_result) = 1 THEN
+        DBMS_LOB.FREETEMPORARY(l_result);
+      END IF;
 
       RAISE;
   END request;
