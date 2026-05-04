@@ -117,7 +117,7 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
   ) IS
     l_offset PLS_INTEGER := 1;
     l_length PLS_INTEGER;
-    l_chunk  VARCHAR2(32767);
+    l_chunk  VARCHAR2(c_chunk_size);
   BEGIN
     IF p_body IS NULL THEN
       RETURN;
@@ -148,8 +148,8 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     l_url      VARCHAR2(4000);
     l_request  UTL_HTTP.req;
     l_response UTL_HTTP.resp;
-    l_result   CLOB := TO_CLOB('');
-    l_buffer   VARCHAR2(32767);
+    l_result   CLOB;
+    l_buffer   VARCHAR2(c_chunk_size);
   BEGIN
     l_url := build_url(p_base_url, p_endpoint);
 
@@ -161,7 +161,7 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
       UTL_HTTP.SET_WALLET(p_wallet_path, p_wallet_password);
     END IF;
 
-    UTL_HTTP.SET_TRANSFER_TIMEOUT(GREATEST(1, NVL(TRUNC(p_timeout_seconds), 30)));
+    UTL_HTTP.SET_TRANSFER_TIMEOUT(GREATEST(1, NVL(CEIL(p_timeout_seconds), 30)));
     UTL_HTTP.SET_RESPONSE_ERROR_CHECK(FALSE);
 
     l_request := UTL_HTTP.BEGIN_REQUEST(l_url, UPPER(NVL(p_method, 'GET')), 'HTTP/1.1');
@@ -184,7 +184,11 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     BEGIN
       LOOP
         UTL_HTTP.READ_TEXT(l_response, l_buffer, c_chunk_size);
-        l_result := l_result || l_buffer;
+        IF l_result IS NULL THEN
+          l_result := l_buffer;
+        ELSE
+          l_result := l_result || l_buffer;
+        END IF;
       END LOOP;
     EXCEPTION
       WHEN UTL_HTTP.END_OF_BODY THEN
