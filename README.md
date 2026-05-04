@@ -10,6 +10,9 @@ A Java EE web application configured for deployment to Wildfly application serve
 MavenWildfly/
 ├── README.md                                     # Project overview and setup guide
 ├── TESTING.md                                    # Manual API testing instructions
+├── database/
+│   └── oracle/
+│       └── comms_rest_client_pkg.sql             # Oracle PL/SQL REST client package
 └── comms_processor/
     ├── pom.xml                                   # Maven configuration
     ├── nb-configuration.xml                      # NetBeans project settings
@@ -121,6 +124,44 @@ mvn wildfly:undeploy
 1. Install Oracle Database
 2. Create user and schema as needed
 3. Configure datasource in Wildfly
+
+### Oracle PL/SQL REST Client
+
+The repository includes an Oracle PL/SQL package script at `database/oracle/comms_rest_client_pkg.sql` that can call the REST API exposed by the deployed web service from inside Oracle Database.
+
+Install it in the Oracle schema that will make outbound REST calls:
+
+```sql
+@database/oracle/comms_rest_client_pkg.sql
+```
+
+The schema must have an Oracle network ACL allowing outbound HTTP(S) access to the WildFly host and port. The script contains an example `DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE` block for granting `connect` to the target host.
+
+Example calls:
+
+```sql
+SELECT comms_rest_client.ping('http://localhost:8080/comms_processor') AS response
+FROM dual;
+
+SELECT comms_rest_client.get_status('http://localhost:8080/comms_processor') AS response
+FROM dual;
+```
+
+For POST endpoints, pass JSON as a CLOB:
+
+```sql
+DECLARE
+  l_response CLOB;
+BEGIN
+  l_response := comms_rest_client.post_json(
+    p_endpoint  => '/api/smtp/sendTextMessage',
+    p_json_body => '{"smtpHost":"smtp.example.com","smtpUser":"user@example.com","fromAddress":"sender@example.com","toAddress":"recipient@example.com","subject":"Test Email","body":"Sent from Oracle PL/SQL"}',
+    p_base_url  => 'http://localhost:8080/comms_processor');
+
+  DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(l_response, 4000, 1));
+END;
+/
+```
 
 ### Wildfly Datasource Configuration
 
