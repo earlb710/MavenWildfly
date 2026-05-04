@@ -222,7 +222,11 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     p_timeout_seconds IN NUMBER DEFAULT 30
   ) RETURN CLOB IS
   BEGIN
-    RETURN request('/api/status', p_base_url, 'GET', p_timeout_seconds => p_timeout_seconds);
+    RETURN request(
+      p_endpoint        => '/api/status',
+      p_base_url        => p_base_url,
+      p_method          => 'GET',
+      p_timeout_seconds => p_timeout_seconds);
   END get_status;
 
   FUNCTION ping(
@@ -230,7 +234,11 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     p_timeout_seconds IN NUMBER DEFAULT 30
   ) RETURN CLOB IS
   BEGIN
-    RETURN request('/api/status/ping', p_base_url, 'GET', p_timeout_seconds => p_timeout_seconds);
+    RETURN request(
+      p_endpoint        => '/api/status/ping',
+      p_base_url        => p_base_url,
+      p_method          => 'GET',
+      p_timeout_seconds => p_timeout_seconds);
   END ping;
 
   FUNCTION get_datasources(
@@ -238,7 +246,11 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     p_timeout_seconds IN NUMBER DEFAULT 30
   ) RETURN CLOB IS
   BEGIN
-    RETURN request('/api/status/datasources', p_base_url, 'GET', p_timeout_seconds => p_timeout_seconds);
+    RETURN request(
+      p_endpoint        => '/api/status/datasources',
+      p_base_url        => p_base_url,
+      p_method          => 'GET',
+      p_timeout_seconds => p_timeout_seconds);
   END get_datasources;
 
   FUNCTION send_text_message(
@@ -247,7 +259,11 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     p_timeout_seconds IN NUMBER DEFAULT 30
   ) RETURN CLOB IS
   BEGIN
-    RETURN post_json('/api/smtp/sendTextMessage', p_json_body, p_base_url, p_timeout_seconds => p_timeout_seconds);
+    RETURN post_json(
+      p_endpoint        => '/api/smtp/sendTextMessage',
+      p_json_body       => p_json_body,
+      p_base_url        => p_base_url,
+      p_timeout_seconds => p_timeout_seconds);
   END send_text_message;
 END comms_rest_client;
 /
