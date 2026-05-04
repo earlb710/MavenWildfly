@@ -17,6 +17,15 @@
 --       principal_type => xs_acl.ptype_db));
 -- END;
 -- /
+--
+-- Note: UTL_HTTP transfer timeout is session scoped in Oracle. Passing
+-- p_timeout_seconds changes the timeout for subsequent UTL_HTTP calls in the
+-- same database session.
+--
+-- If p_username and p_password are supplied for Basic authentication, the
+-- request URL must use HTTPS to avoid sending credentials in clear text. Supply
+-- p_wallet_path and p_wallet_password when your Oracle database requires a
+-- wallet to trust the web service certificate.
 
 CREATE OR REPLACE PACKAGE comms_rest_client AUTHID CURRENT_USER AS
   c_default_base_url CONSTANT VARCHAR2(4000) := 'http://localhost:8080/comms_processor';
@@ -139,11 +148,14 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     l_url      VARCHAR2(4000);
     l_request  UTL_HTTP.req;
     l_response UTL_HTTP.resp;
-    l_result   CLOB;
+    l_result   CLOB := TO_CLOB('');
     l_buffer   VARCHAR2(32767);
   BEGIN
     l_url := build_url(p_base_url, p_endpoint);
-    DBMS_LOB.CREATETEMPORARY(l_result, TRUE);
+
+    IF p_username IS NOT NULL AND LOWER(SUBSTR(l_url, 1, 8)) <> 'https://' THEN
+      RAISE_APPLICATION_ERROR(-20002, 'Basic authentication requires an HTTPS base URL');
+    END IF;
 
     IF p_wallet_path IS NOT NULL THEN
       UTL_HTTP.SET_WALLET(p_wallet_path, p_wallet_password);
@@ -172,7 +184,7 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
     BEGIN
       LOOP
         UTL_HTTP.READ_TEXT(l_response, l_buffer, c_chunk_size);
-        DBMS_LOB.WRITEAPPEND(l_result, LENGTH(l_buffer), l_buffer);
+        l_result := l_result || l_buffer;
       END LOOP;
     EXCEPTION
       WHEN UTL_HTTP.END_OF_BODY THEN
@@ -189,10 +201,6 @@ CREATE OR REPLACE PACKAGE BODY comms_rest_client AS
         WHEN OTHERS THEN
           NULL;
       END;
-
-      IF l_result IS NOT NULL AND DBMS_LOB.ISTEMPORARY(l_result) = 1 THEN
-        DBMS_LOB.FREETEMPORARY(l_result);
-      END IF;
 
       RAISE;
   END request;

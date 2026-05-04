@@ -137,6 +137,8 @@ Install it in the Oracle schema that will make outbound REST calls:
 
 The schema must have an Oracle network ACL allowing outbound HTTP(S) access to the WildFly host and port. The script contains an example `DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE` block for granting `connect` to the target host.
 
+If you use the package's Basic authentication parameters, call an HTTPS base URL and configure the Oracle wallet arguments as needed so credentials are not sent in clear text. The package's request timeout uses Oracle `UTL_HTTP.SET_TRANSFER_TIMEOUT`, which is scoped to the current database session.
+
 Example calls:
 
 ```sql
